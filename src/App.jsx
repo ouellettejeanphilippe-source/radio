@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GAMES, STATIONS } from './stations.js'
 import { parseYouTubeId, useYouTubePlayer } from './youtube.js'
 import { heardRatio } from './heard.js'
 
-const OVERRIDES_KEY = 'radio:overrides'
 const CURRENT_KEY = 'radio:current'
 
 function readJson(key, fallback) {
@@ -34,8 +33,8 @@ const PREV = 'M6 6h2v12H6zm3.5 6 8.5 6V6z'
 const NEXT = 'M16 6h2v12h-2zM6 18l8.5-6L6 6z'
 const VOL = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.47 4.47 0 0 0 2.5-4z'
 const MUTE = 'M3 9v6h4l5 5V4L7 9H3zm13.59 3L19 9.59 17.59 8.17 15.17 10.6 12.76 8.17 11.34 9.59 13.76 12l-2.42 2.41 1.42 1.42 2.41-2.42 2.42 2.42L19 14.41z'
-const EDIT = 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'
-const RADIO = 'M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM7 20a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm13-8h-2v-2h-2v2H4V8h16v4z'
+const CHEVRON = 'M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z'
+const RADIO ='M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM7 20a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm13-8h-2v-2h-2v2H4V8h16v4z'
 
 function Cover({ station, className = '' }) {
   const [failed, setFailed] = useState(false)
@@ -62,10 +61,10 @@ function HeardMap({ rec, position, onReset }) {
   return (
     <div className="heard">
       <div className="heard-head">
-        <span>Déjà écouté : {Math.round(ratio * 100)} %</span>
+        <span>Tu as entendu {Math.round(ratio * 100)} % de cette station</span>
         {ratio > 0 && (
           <button className="btn-link" onClick={onReset}>
-            Réinitialiser
+            Recommencer
           </button>
         )}
       </div>
@@ -78,68 +77,22 @@ function HeardMap({ rec, position, onReset }) {
   )
 }
 
-function EditDialog({ station, onSave, onClose }) {
-  const [youtube, setYoutube] = useState(station.youtube)
-  const [logo, setLogo] = useState(station.logo)
-  const valid = !youtube || parseYouTubeId(youtube)
-  return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <form
-        className="dialog"
-        onMouseDown={(e) => e.stopPropagation()}
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (valid) onSave({ youtube: youtube.trim(), logo: logo.trim() })
-        }}
-      >
-        <h2>{station.name}</h2>
-        <label>
-          Lien YouTube du mix complet
-          <input autoFocus value={youtube} onChange={(e) => setYoutube(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" />
-        </label>
-        {!valid && <p className="error">Lien YouTube invalide.</p>}
-        <label>
-          Logo (URL d'image, optionnel)
-          <input value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://…/logo.png" />
-        </label>
-        <div className="dialog-actions">
-          <button type="button" className="btn-ghost" onClick={() => onSave(null)}>
-            Réinitialiser
-          </button>
-          <button type="button" className="btn-ghost" onClick={onClose}>
-            Annuler
-          </button>
-          <button type="submit" className="btn-primary" disabled={!valid}>
-            Enregistrer
-          </button>
-        </div>
-      </form>
-    </div>
-  )
-}
+const STATIONS_PLAYABLE = STATIONS.map((st) => ({ ...st, videoId: parseYouTubeId(st.youtube) })).filter((st) => st.videoId)
 
 export default function App() {
-  const [overrides, setOverrides] = useState(() => readJson(OVERRIDES_KEY, {}))
   const [game, setGame] = useState('all')
   const [query, setQuery] = useState('')
   const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
   const [loadedId, setLoadedId] = useState(null)
-  const [editingId, setEditingId] = useState(null)
   const [lastVolume, setLastVolume] = useState(80)
+  const [expanded, setExpanded] = useState(false)
+  const touchY = useRef(0)
   const hostRef = useRef(null)
   const yt = useYouTubePlayer(hostRef)
 
-  const stations = useMemo(
-    () =>
-      STATIONS.map((st) => {
-        const merged = { ...st, ...overrides[st.id] }
-        return { ...merged, videoId: parseYouTubeId(merged.youtube) }
-      }),
-    [overrides],
-  )
+  const stations = STATIONS_PLAYABLE
   const current = stations.find((st) => st.id === currentId)
-  const editing = stations.find((st) => st.id === editingId)
-  const playable = stations.filter((st) => st.videoId)
+  const playable = stations
   const q = query.trim().toLowerCase()
   const visible = stations.filter(
     (st) => (game === 'all' || st.game === game) && (!q || `${st.name} ${st.dj} ${st.genre}`.toLowerCase().includes(q)),
@@ -151,19 +104,7 @@ export default function App() {
     localStorage.setItem(CURRENT_KEY, JSON.stringify(currentId))
   }, [currentId])
 
-  function saveOverride(id, value) {
-    setOverrides((prev) => {
-      const next = { ...prev }
-      if (value) next[id] = value
-      else delete next[id]
-      localStorage.setItem(OVERRIDES_KEY, JSON.stringify(next))
-      return next
-    })
-    setEditingId(null)
-  }
-
   function playStation(st) {
-    if (!st.videoId) return setEditingId(st.id)
     if (st.id === loadedId) return yt.toggle()
     setCurrentId(st.id)
     setLoadedId(st.id)
@@ -215,6 +156,37 @@ export default function App() {
     document.title = `${current.name} · Radio`
   }, [current])
 
+  const playIcon = isCurrentLoaded && isPlaying ? PAUSE : PLAY
+  const pct = isCurrentLoaded && yt.time.duration ? (yt.time.current / yt.time.duration) * 100 : 0
+  const controls = (
+    <div className="controls">
+      <button className="ctrl" title="Station précédente" onClick={() => step(-1)}>
+        <Icon d={PREV} />
+      </button>
+      <button className="ctrl ctrl--main" title="Lecture / pause (espace)" onClick={togglePlay}>
+        <Icon d={playIcon} />
+      </button>
+      <button className="ctrl" title="Station suivante" onClick={() => step(1)}>
+        <Icon d={NEXT} />
+      </button>
+    </div>
+  )
+  const progress = (
+    <div className="progress">
+      <span>{fmt(isCurrentLoaded ? yt.time.current : 0)}</span>
+      <input
+        type="range"
+        min="0"
+        max={Math.max(1, Math.floor(yt.time.duration))}
+        value={isCurrentLoaded ? Math.floor(yt.time.current) : 0}
+        disabled={!isCurrentLoaded}
+        onChange={(e) => yt.seek(Number(e.target.value))}
+        style={{ '--pct': `${pct}%` }}
+      />
+      <span>{fmt(isCurrentLoaded ? yt.time.duration : 0)}</span>
+    </div>
+  )
+
   const gameLabel = (id) => GAMES.find((g) => g.id === id)?.name
   const heading = game === 'all' ? 'Toutes les stations' : gameLabel(game)
 
@@ -234,48 +206,44 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <p className="sidebar-note">
-          {playable.length}/{stations.length} stations avec un lien YouTube. Clique sur ✎ pour en ajouter.
-        </p>
       </aside>
 
       <main className="main panel" style={{ '--accent': current?.color ?? '#535353' }}>
         <header className="main-header">
+          <div className="mobile-brand">
+            <Icon d={RADIO} size={24} />
+            <span>Radio</span>
+          </div>
           <input className="search" type="search" placeholder="Rechercher une station, un DJ, un genre…" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <nav className="chips">
+            {[{ id: 'all', name: 'Toutes' }, ...GAMES].map((g) => (
+              <button key={g.id} className={`chip ${game === g.id ? 'active' : ''}`} onClick={() => setGame(g.id)}>
+                {g.name}
+              </button>
+            ))}
+          </nav>
           <h1>{heading}</h1>
         </header>
         <div className="grid">
           {visible.map((st) => {
             const active = st.id === currentId
             return (
-              <div key={st.id} className={`card ${active ? 'active' : ''} ${st.videoId ? '' : 'missing'}`} onClick={() => playStation(st)}>
+              <button key={st.id} className={`card ${active ? 'active' : ''}`} onClick={() => playStation(st)}>
                 <div className="card-cover">
                   <Cover key={st.logo + st.videoId} station={st} />
-                  <button
-                    className="card-edit"
-                    title="Modifier le lien"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditingId(st.id)
-                    }}
-                  >
-                    <Icon d={EDIT} size={16} />
-                  </button>
-                  {st.videoId && heardRatio(yt.heard[st.videoId]) > 0 && (
+                  {heardRatio(yt.heard[st.videoId]) > 0 && (
                     <span className="card-heard" style={{ '--pct': `${heardRatio(yt.heard[st.videoId]) * 100}%` }} />
                   )}
-                  {st.videoId && (
-                    <span className="card-play">
-                      <Icon d={active && loadedId === st.id && isPlaying ? PAUSE : PLAY} size={22} />
-                    </span>
-                  )}
+                  <span className="card-play">
+                    <Icon d={active && loadedId === st.id && isPlaying ? PAUSE : PLAY} size={22} />
+                  </span>
                 </div>
                 <div className="card-title">{st.name}</div>
                 <div className="card-sub">
                   {game === 'all' && `${gameLabel(st.game)} · `}
-                  {st.videoId ? st.dj || st.genre : 'Lien manquant'}
+                  {st.dj || st.genre}
                 </div>
-              </div>
+              </button>
             )
           })}
           {!visible.length && <p className="empty">Aucune station trouvée.</p>}
@@ -304,15 +272,15 @@ export default function App() {
             {current.videoId && (
               <HeardMap rec={yt.heard[current.videoId]} position={isCurrentLoaded ? yt.time.current : null} onReset={() => yt.resetHeard(current.videoId)} />
             )}
-            {yt.status === 'error' && <p className="error">Vidéo indisponible ou intégration bloquée par YouTube.</p>}
+            {yt.status === 'error' && <p className="error">Cette station ne joue pas en ce moment. Essaie-en une autre.</p>}
           </div>
         ) : (
           <p className="now-empty">Choisis une station pour commencer.</p>
         )}
       </aside>
 
-      <footer className="player">
-        <div className="player-left">
+      <footer className={`player ${current ? '' : 'player--empty'}`} style={{ '--accent': current?.color ?? '#535353' }}>
+        <div className="player-left" onClick={() => current && setExpanded(true)}>
           {current && (
             <>
               <Cover key={current.id + current.videoId} station={current} className="cover--small" />
@@ -323,32 +291,14 @@ export default function App() {
             </>
           )}
         </div>
+        <button className="player-mini-play" onClick={togglePlay} aria-label="Lecture / pause">
+          <Icon d={playIcon} size={26} />
+        </button>
+        <span className="player-line" style={{ '--pct': `${pct}%` }} />
 
         <div className="player-center">
-          <div className="controls">
-            <button className="ctrl" title="Station précédente" onClick={() => step(-1)}>
-              <Icon d={PREV} />
-            </button>
-            <button className="ctrl ctrl--main" title="Lecture / pause (espace)" onClick={togglePlay}>
-              <Icon d={isCurrentLoaded && isPlaying ? PAUSE : PLAY} />
-            </button>
-            <button className="ctrl" title="Station suivante" onClick={() => step(1)}>
-              <Icon d={NEXT} />
-            </button>
-          </div>
-          <div className="progress">
-            <span>{fmt(isCurrentLoaded ? yt.time.current : 0)}</span>
-            <input
-              type="range"
-              min="0"
-              max={Math.max(1, Math.floor(yt.time.duration))}
-              value={isCurrentLoaded ? Math.floor(yt.time.current) : 0}
-              disabled={!isCurrentLoaded}
-              onChange={(e) => yt.seek(Number(e.target.value))}
-              style={{ '--pct': `${isCurrentLoaded && yt.time.duration ? (yt.time.current / yt.time.duration) * 100 : 0}%` }}
-            />
-            <span>{fmt(isCurrentLoaded ? yt.time.duration : 0)}</span>
-          </div>
+          {controls}
+          {progress}
         </div>
 
         <div className="player-right">
@@ -375,7 +325,35 @@ export default function App() {
         </div>
       </footer>
 
-      {editing && <EditDialog station={editing} onSave={(v) => saveOverride(editing.id, v)} onClose={() => setEditingId(null)} />}
+      {expanded && current && (
+        <div
+          className="sheet"
+          style={{ '--accent': current.color }}
+          onTouchStart={(e) => (touchY.current = e.touches[0].clientY)}
+          onTouchEnd={(e) => {
+            if (e.changedTouches[0].clientY - touchY.current > 90) setExpanded(false)
+          }}
+        >
+          <div className="sheet-top">
+            <button className="ctrl" onClick={() => setExpanded(false)} aria-label="Fermer">
+              <Icon d={CHEVRON} size={28} />
+            </button>
+            <span>{gameLabel(current.game)}</span>
+            <span style={{ width: 28 }} />
+          </div>
+          <div className={`sheet-art ${isCurrentLoaded && isPlaying ? 'playing' : ''}`}>
+            <Cover key={current.id + current.videoId} station={current} />
+          </div>
+          <div className="sheet-title">{current.name}</div>
+          <div className="sheet-sub">{[current.dj, current.genre].filter(Boolean).join(' · ')}</div>
+          {progress}
+          {controls}
+          {current.videoId && (
+            <HeardMap rec={yt.heard[current.videoId]} position={isCurrentLoaded ? yt.time.current : null} onReset={() => yt.resetHeard(current.videoId)} />
+          )}
+          {yt.status === 'error' && <p className="error">Cette station ne joue pas en ce moment. Essaie-en une autre.</p>}
+        </div>
+      )}
     </div>
   )
 }

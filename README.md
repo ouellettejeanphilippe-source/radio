@@ -16,10 +16,7 @@ Le repo ne contient **aucun contenu** : seulement l'interface et la liste des st
 
 ## Ajouter les liens
 
-Deux façons :
-
-1. Dans l'interface : survoler une station → ✎ → coller le lien YouTube (et un logo optionnel). Sauvegardé dans le navigateur.
-2. Dans `src/stations.js` : remplir `youtube` (URL ou ID) et `logo` (URL d'image) pour que ce soit partagé à tout le monde.
+Dans `src/stations.js` : `youtube` (URL ou ID) et `logo` (URL d'image, optionnel). Les stations sans lien ne sont pas affichées.
 
 Sans logo, la pochette utilise la miniature YouTube, sinon une tuile générée avec la couleur de la station.
 
