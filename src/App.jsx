@@ -220,6 +220,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <div ref={hostRef} className="audio-host" aria-hidden="true" />
       <aside className="sidebar panel">
         <div className="brand">
           <Icon d={RADIO} size={28} />
@@ -283,11 +284,8 @@ export default function App() {
 
       <aside className="now panel">
         <h3>En lecture</h3>
-        <div className="video">
-          <div ref={hostRef} className="video-host" />
-          {!isCurrentLoaded && (
-            <div className="video-placeholder">{current ? <Cover key={current.id} station={current} /> : <Icon d={RADIO} size={64} />}</div>
-          )}
+        <div className={`now-art ${isCurrentLoaded && isPlaying ? 'playing' : ''}`}>
+          {current ? <Cover key={current.id + current.videoId} station={current} /> : <Icon d={RADIO} size={64} />}
         </div>
         {current ? (
           <div className="now-info">
