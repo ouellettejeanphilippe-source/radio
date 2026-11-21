@@ -4,6 +4,9 @@ import { parseYouTubeId, useYouTubePlayer } from './youtube.js'
 import { heardRatio } from './heard.js'
 import { startStatic } from './static.js'
 import META from './meta.json'
+import { countScrobblable, finishLastfmLogin, scrobblingOn, useScrobbler, useScrobbleSettings } from './scrobble.js'
+import Settings from './Settings.jsx'
+import { startSync, useSync } from './sync.js'
 
 const CURRENT_KEY = 'radio:current'
 const MODE_KEY = 'radio:mode'
@@ -48,6 +51,7 @@ const CAR = 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L
 const CLOSE = 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'
 const HEART = 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
 const HEART_OUTLINE = 'M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z'
+const GEAR = 'M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7 7 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.49.42l-.36 2.54a7.3 7.3 0 0 0-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.66 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.12.22.38.3.6.22l2.39-.96c.5.38 1.05.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.84c.24 0 .45-.18.49-.42l.36-2.54a7 7 0 0 0 1.63-.94l2.39.96c.22.08.48 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z'
 const WHEEL = 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 0 1 7.75 6h-3.1A5 5 0 0 0 13 7.1V4.06c-.33-.04-.66-.06-1-.06zm-1 .06V7.1A5 5 0 0 0 7.35 10h-3.1A8 8 0 0 1 11 4.06zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm-7.75 5h3.1A5 5 0 0 0 11 16.9v3.04A8 8 0 0 1 4.25 14zm12.4 0h3.1A8 8 0 0 1 13 19.94V16.9A5 5 0 0 0 16.65 14z'
 
 const MODES = [
@@ -315,6 +319,10 @@ export default function App() {
   const [favs, setFavs] = useState(() => readJson(FAVS_KEY, []))
   const [recent, setRecent] = useState(() => readJson(RECENT_KEY, []))
   const [drive, setDrive] = useState(() => readJson(DRIVE_KEY, false))
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [scrobbleError, setScrobbleError] = useState(null)
+  const scrobbleSettings = useScrobbleSettings()
+  const { sync } = useSync()
   const history = useRef([])
   const hostRef = useRef(null)
   const stopStatic = useRef(null)
@@ -406,7 +414,7 @@ export default function App() {
 
   const actions = useRef({})
   useEffect(() => {
-    actions.current = { togglePlay, step }
+    actions.current = { togglePlay, step, loaded: () => loadedId != null }
   })
 
   useEffect(() => {
@@ -431,6 +439,38 @@ export default function App() {
   }, [])
 
   const song = isCurrentLoaded ? trackAt(current.tracks, yt.time.current) : null
+  const { status: scrobbleStatus, last: lastScrobble } = useScrobbler({
+    videoId: isCurrentLoaded ? current.videoId : null,
+    tracks: current?.tracks,
+    playing: yt.status === 'playing',
+    time: yt.time,
+  })
+
+  // Back from Last.fm's login page with ?token=: finish connecting.
+  useEffect(() => {
+    finishLastfmLogin().then(
+      (name) => name && setSettingsOpen(true),
+      (e) => {
+        setScrobbleError(e.message)
+        setSettingsOpen(true)
+      },
+    )
+  }, [])
+
+  // Sync between devices: start it, and take in what other devices changed.
+  useEffect(() => {
+    startSync().then((fromLink) => fromLink && setSettingsOpen(true))
+    const onSynced = (e) => {
+      const keys = e.detail
+      if (keys.includes(FAVS_KEY)) setFavs(readJson(FAVS_KEY, []))
+      if (keys.includes(RECENT_KEY)) setRecent(readJson(RECENT_KEY, []))
+      if (keys.includes(MODE_KEY)) setMode(readJson(MODE_KEY, 'game'))
+      // Never switch stations under the listener: only when nothing is playing here yet.
+      if (keys.includes(CURRENT_KEY) && !actions.current.loaded()) setCurrentId(readJson(CURRENT_KEY, null))
+    }
+    window.addEventListener('radio:synced', onSynced)
+    return () => window.removeEventListener('radio:synced', onSynced)
+  }, [])
   const isFav = Boolean(current && favs.includes(current.id))
 
   useEffect(() => {
@@ -537,6 +577,14 @@ export default function App() {
           <div className="mobile-brand">
             <Icon d={RADIO} size={24} />
             <span>Radio</span>
+            <button
+              className={`drive-open drive-open--icon ${scrobblingOn(scrobbleSettings) || sync ? 'on' : ''}`}
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Réglages"
+              title="Réglages : synchro entre appareils, scrobbling"
+            >
+              <Icon d={GEAR} />
+            </button>
             <button className="drive-open" onClick={() => setDrive(true)}>
               <Icon d={CAR} />
               <span>Mode auto</span>
@@ -617,7 +665,16 @@ export default function App() {
             <div className="sheet-sub">
               {[current.dj, current.genre, eraLabel(current.era)].filter(Boolean).join(' · ')} <TalkBadge talk={current.talk} />
             </div>
-            {song && <div className="song">♪ {song}</div>}
+            {song && (
+              <div className="song">
+                ♪ {song}
+                {scrobbleStatus && (
+                  <span className={`song-scrobble song-scrobble--${scrobbleStatus.state}`} title={scrobbleStatus.error}>
+                    {scrobbleStatus.state === 'done' ? ' ✓ envoyée' : scrobbleStatus.state === 'error' ? ' ! non envoyée' : ''}
+                  </span>
+                )}
+              </div>
+            )}
             {progress}
             <div className="controls controls--big">
               {modeButton}
@@ -665,6 +722,18 @@ export default function App() {
           onStep={step}
           onWheel={() => setWheelOpen(true)}
           onClose={() => setDrive(false)}
+        />
+      )}
+
+      {settingsOpen && (
+        <Settings
+          count={countScrobblable(stations)}
+          total={stations.length}
+          lastStatus={scrobbleError ? { state: 'error', error: scrobbleError } : lastScrobble}
+          onClose={() => {
+            setSettingsOpen(false)
+            setScrobbleError(null)
+          }}
         />
       )}
 

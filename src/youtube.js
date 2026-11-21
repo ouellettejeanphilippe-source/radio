@@ -159,6 +159,13 @@ export function useYouTubePlayer(hostRef) {
     setTime((x) => ({ ...x, current: t }))
   }, [])
 
+  // Another device's listening history arrived (see sync.js).
+  useEffect(() => {
+    const onSynced = (e) => e.detail.includes('radio:heard') && setHeard(readHeard())
+    window.addEventListener('radio:synced', onSynced)
+    return () => window.removeEventListener('radio:synced', onSynced)
+  }, [])
+
   const resetHeard = useCallback((videoId) => setHeard(clearHeard(videoId)), [])
 
   const setVolume = useCallback((v) => {
