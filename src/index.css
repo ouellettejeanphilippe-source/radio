@@ -38,7 +38,7 @@ button:disabled {
 /* GTA-style display type: Pricedown with a hard black outline. */
 .display,
 .brand span,
-.mobile-brand span,
+.mobile-brand > span,
 h1,
 .shelf h2,
 .sheet-title,
@@ -232,6 +232,219 @@ h1 {
 .empty {
   color: var(--muted);
   padding: 8px 24px;
+}
+
+/* What the recording holds: DJ + ads, DJ, music only, talk */
+.badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  vertical-align: 1px;
+  color: #000;
+  background: var(--green);
+}
+.badge--dj {
+  background: #f5c542;
+}
+.badge--music {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.22);
+}
+.badge--talk {
+  background: #74b9ff;
+}
+.card-cover .badge {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.card-cover .badge--music {
+  background: rgba(0, 0, 0, 0.6);
+}
+.song {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fav.on,
+.fav.on:hover:not(:disabled),
+.drive-fav.on {
+  color: var(--green);
+}
+.now-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.drive-open {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 12px;
+  border-radius: 4px;
+  background: #1f1f1f;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.drive-open:hover {
+  background: #2a2a2a;
+}
+.mobile-brand .drive-open {
+  margin: 0 0 0 auto;
+  padding: 7px 12px;
+  border-radius: 20px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+/* Car mode */
+.drive {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  justify-items: center;
+  gap: 16px;
+  padding: calc(12px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--accent) 45%, #0c0c0c) 0, #050505 75%);
+  transition: background 0.6s;
+  touch-action: none;
+  user-select: none;
+  animation: fade-in 0.2s ease-out;
+}
+.drive-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drive-top .ctrl {
+  color: var(--text);
+}
+.drive-close {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px 10px 8px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+.drive-art {
+  align-self: center;
+  width: min(72vw, 42vh, 420px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  transition:
+    transform 0.25s,
+    opacity 0.25s;
+}
+.drive-art.dragging {
+  transition: none;
+}
+.drive-art .cover {
+  height: 100%;
+  border-radius: 12px;
+}
+.drive-info {
+  width: 100%;
+  text-align: center;
+  min-width: 0;
+}
+.drive-name {
+  font-family: var(--display);
+  font-size: clamp(36px, 10vw, 64px);
+  line-height: 1;
+  -webkit-text-stroke: 2px #000;
+  paint-order: stroke fill;
+  text-shadow: 3px 4px 0 #000;
+  overflow-wrap: anywhere;
+}
+.drive-song {
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drive-controls {
+  width: min(100%, 520px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drive-btn {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+}
+.drive-btn:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+.drive-btn--main {
+  width: 128px;
+  height: 128px;
+  background: #fff;
+  color: #000;
+}
+.drive-btn--main:active {
+  background: #ddd;
+}
+/* Phone on a car mount, sideways: logo on the left, the rest on the right. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .drive {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto 1fr auto;
+    column-gap: 28px;
+    padding-left: calc(20px + env(safe-area-inset-left));
+    padding-right: calc(20px + env(safe-area-inset-right));
+  }
+  .drive-top {
+    grid-column: 1 / -1;
+  }
+  .drive-art {
+    grid-row: 2 / 4;
+    width: min(40vw, calc(100vh - 120px));
+  }
+  .drive-info {
+    align-self: end;
+  }
+  .drive-controls {
+    justify-self: center;
+  }
+  .drive-btn {
+    width: 84px;
+    height: 84px;
+  }
+  .drive-btn--main {
+    width: 108px;
+    height: 108px;
+  }
 }
 
 /* Covers: station logo on a tile in its colour, or the video thumbnail */
@@ -578,8 +791,9 @@ input[type='range']:disabled {
 .sheet-top .ctrl {
   color: var(--text);
 }
-.sheet-top-spacer {
-  width: 30px;
+.sheet-top-actions {
+  display: flex;
+  gap: 14px;
 }
 .video-slot {
   flex: none;
@@ -772,7 +986,7 @@ input[type='range']:disabled {
     margin-bottom: 12px;
     color: var(--green);
   }
-  .mobile-brand span {
+  .mobile-brand > span {
     font-size: 34px;
     color: var(--text);
   }

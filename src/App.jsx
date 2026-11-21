@@ -2,9 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { ERAS, GAMES, STATIONS } from './stations.js'
 import { parseYouTubeId, useYouTubePlayer } from './youtube.js'
 import { heardRatio } from './heard.js'
+import { startStatic } from './static.js'
+import META from './meta.json'
 
 const CURRENT_KEY = 'radio:current'
 const MODE_KEY = 'radio:mode'
+const FAVS_KEY = 'radio:favs'
+const RECENT_KEY = 'radio:recent'
+const DRIVE_KEY = 'radio:drive'
 
 function readJson(key, fallback) {
   try {
@@ -39,6 +44,10 @@ const CHEVRON = 'M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z'
 const SHUFFLE = 'M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z'
 const GAMEPAD = 'M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'
 const CALENDAR = 'M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14v11zM7 11h5v5H7z'
+const CAR = 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM5 11l1.5-4.5h11L19 11H5z'
+const CLOSE = 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'
+const HEART = 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
+const HEART_OUTLINE = 'M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z'
 const WHEEL = 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 0 1 7.75 6h-3.1A5 5 0 0 0 13 7.1V4.06c-.33-.04-.66-.06-1-.06zm-1 .06V7.1A5 5 0 0 0 7.35 10h-3.1A8 8 0 0 1 11 4.06zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm-7.75 5h3.1A5 5 0 0 0 11 16.9v3.04A8 8 0 0 1 4.25 14zm12.4 0h3.1A8 8 0 0 1 13 19.94V16.9A5 5 0 0 0 16.65 14z'
 
 const MODES = [
@@ -133,7 +142,33 @@ function RadioWheel({ title, stations, currentId, onPick, onClose }) {
   )
 }
 
-const STATIONS_PLAYABLE = STATIONS.map((st) => ({ ...st, videoId: parseYouTubeId(st.youtube) })).filter((st) => st.videoId)
+// What the recording holds besides music. Known per game where the rips are consistent,
+// otherwise what the uploader says (see scripts/meta.mjs).
+const GAME_TALK = { mafia2: 'full', mafia3: 'full', fans: 'full', fo3: 'dj', fonv: 'dj', fo4: 'dj', sdogs: 'music', scarface: 'music', wd2: 'music', wdl: 'music' }
+const TALK_LABELS = { full: 'DJ + pubs', dj: 'DJ', music: 'Musique seulement', talk: 'Talk-show' }
+function talkOf(st, videoId) {
+  if (st.genre === 'Talk') return 'talk'
+  if (st.game.startsWith('gta')) return 'full'
+  return GAME_TALK[st.game] ?? META[videoId]?.talk
+}
+
+const TalkBadge = ({ talk }) => talk && <span className={`badge badge--${talk}`}>{TALK_LABELS[talk]}</span>
+
+// Song playing at second t, from the tracklist in the video description.
+function trackAt(tracks, t) {
+  if (!tracks || !(t >= 0)) return null
+  let found = null
+  for (const [start, title] of tracks) {
+    if (start > t) break
+    found = title
+  }
+  return found
+}
+
+const STATIONS_PLAYABLE = STATIONS.map((st) => {
+  const videoId = parseYouTubeId(st.youtube)
+  return { ...st, videoId, talk: talkOf(st, videoId), tracks: META[videoId]?.tracks }
+}).filter((st) => st.videoId)
 const gameLabel = (id) => GAMES.find((g) => g.id === id)?.name
 const eraLabel = (id) => ERAS.find((e) => e.id === id)?.name
 
@@ -165,6 +200,80 @@ function useSwipe({ onMove, onEnd }) {
   }
 }
 
+// Keeps the screen on while the component is mounted (re-acquired when the page comes back).
+function useWakeLock() {
+  useEffect(() => {
+    if (!('wakeLock' in navigator)) return
+    let lock
+    let done = false
+    const request = () => {
+      if (document.visibilityState !== 'visible') return
+      navigator.wakeLock.request('screen').then(
+        (l) => (done ? l.release() : (lock = l)),
+        () => {},
+      )
+    }
+    request()
+    document.addEventListener('visibilitychange', request)
+    return () => {
+      done = true
+      document.removeEventListener('visibilitychange', request)
+      lock?.release()
+    }
+  }, [])
+}
+
+// Car screen: giant logo and buttons, swipe anywhere to change station, tap the logo for the wheel.
+function DriveMode({ station, song, playIcon, modeButton, fav, onFav, onToggle, onStep, onWheel, onClose }) {
+  const [dragX, setDragX] = useState(0)
+  useWakeLock()
+  const swipe = useSwipe({
+    onMove: (s) => setDragX(s.axis === 'x' ? s.dx : 0),
+    onEnd: (s) => {
+      setDragX(0)
+      if (s.axis === 'x' && Math.abs(s.dx) > 60) onStep(s.dx < 0 ? 1 : -1)
+    },
+  })
+  return (
+    <div className="drive" style={{ '--accent': station?.color ?? '#535353' }} {...swipe}>
+      <div className="drive-top">
+        <button className="drive-close" onClick={onClose}>
+          <Icon d={CLOSE} size={26} />
+          <span>Quitter</span>
+        </button>
+        {modeButton}
+        <button className={`ctrl drive-fav ${fav ? 'on' : ''}`} onClick={onFav} disabled={!station} aria-label="Favori">
+          <Icon d={fav ? HEART : HEART_OUTLINE} size={30} />
+        </button>
+      </div>
+      <button
+        className={`drive-art ${dragX ? 'dragging' : ''}`}
+        onClick={onWheel}
+        disabled={!station}
+        aria-label="Roue des radios"
+        style={{ transform: dragX ? `translateX(${dragX}px)` : undefined, opacity: dragX ? Math.max(0.3, 1 - Math.abs(dragX) / 300) : undefined }}
+      >
+        {station ? <Cover key={station.id} station={station} /> : <Icon d={RADIO} size={96} />}
+      </button>
+      <div className="drive-info">
+        <div className="drive-name">{station?.name ?? 'Choisis une station'}</div>
+        <div className="drive-song">{song || (station && [station.dj, gameLabel(station.game)].filter(Boolean).join(' · '))}</div>
+      </div>
+      <div className="drive-controls">
+        <button className="drive-btn" onClick={() => onStep(-1)} aria-label="Station précédente">
+          <Icon d={PREV} size={48} />
+        </button>
+        <button className="drive-btn drive-btn--main" onClick={onToggle} aria-label="Lecture / pause">
+          <Icon d={playIcon} size={56} />
+        </button>
+        <button className="drive-btn" onClick={() => onStep(1)} aria-label="Station suivante">
+          <Icon d={NEXT} size={48} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [game, setGame] = useState('all')
   const [query, setQuery] = useState('')
@@ -175,16 +284,23 @@ export default function App() {
   const [wheelOpen, setWheelOpen] = useState(false)
   const [lastVolume, setLastVolume] = useState(80)
   const [dragX, setDragX] = useState(0)
+  const [favs, setFavs] = useState(() => readJson(FAVS_KEY, []))
+  const [recent, setRecent] = useState(() => readJson(RECENT_KEY, []))
+  const [drive, setDrive] = useState(() => readJson(DRIVE_KEY, false))
   const history = useRef([])
   const hostRef = useRef(null)
+  const stopStatic = useRef(null)
   const yt = useYouTubePlayer(hostRef)
 
   const stations = STATIONS_PLAYABLE
   const current = stations.find((st) => st.id === currentId)
   const q = query.trim().toLowerCase()
   const visible = stations.filter(
-    (st) => (game === 'all' || st.game === game) && (!q || `${st.name} ${st.dj} ${st.genre}`.toLowerCase().includes(q)),
+    (st) =>
+      (game === 'all' || st.game === game || (game === 'favs' && favs.includes(st.id))) &&
+      (!q || `${st.name} ${st.dj} ${st.genre}`.toLowerCase().includes(q)),
   )
+  const byIds = (ids) => ids.map((id) => stations.find((st) => st.id === id)).filter(Boolean)
   const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
   const modeInfo = MODES.find((m) => m.id === mode) ?? MODES[0]
@@ -195,11 +311,35 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(MODE_KEY, JSON.stringify(mode))
   }, [mode])
+  useEffect(() => {
+    localStorage.setItem(FAVS_KEY, JSON.stringify(favs))
+  }, [favs])
+  useEffect(() => {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recent))
+  }, [recent])
+  useEffect(() => {
+    localStorage.setItem(DRIVE_KEY, JSON.stringify(drive))
+  }, [drive])
+
+  // The static stops as soon as the new station is actually playing (or failed).
+  useEffect(() => {
+    if (yt.status !== 'buffering') {
+      stopStatic.current?.()
+      stopStatic.current = null
+    }
+  }, [yt.status])
 
   function tune(st) {
+    stopStatic.current?.()
+    stopStatic.current = startStatic(yt.volume)
     setCurrentId(st.id)
     setLoadedId(st.id)
+    setRecent((list) => [st.id, ...list.filter((id) => id !== st.id)].slice(0, 12))
     yt.load(st.videoId)
+  }
+
+  function toggleFav(st) {
+    setFavs((list) => (list.includes(st.id) ? list.filter((id) => id !== st.id) : [...list, st.id]))
   }
 
   function playStation(st) {
@@ -266,17 +406,21 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const song = isCurrentLoaded ? trackAt(current.tracks, yt.time.current) : null
+  const isFav = Boolean(current && favs.includes(current.id))
+
   useEffect(() => {
     if (!current) return
     document.title = `${current.name} · Radio`
     if (!('mediaSession' in navigator)) return
+    // Lock screen / car display: the song when known, otherwise the station.
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: current.name,
-      artist: current.dj || gameLabel(current.game),
+      title: song || current.name,
+      artist: song ? current.name : current.dj || gameLabel(current.game),
       album: gameLabel(current.game),
       artwork: [{ src: current.logo || `https://i.ytimg.com/vi/${current.videoId}/hqdefault.jpg` }],
     })
-  }, [current])
+  }, [current, song])
 
   const miniSwipe = useSwipe({
     onMove: (s) => setDragX(s.axis === 'x' ? s.dx : 0),
@@ -347,6 +491,8 @@ export default function App() {
       <button key={st.id} className={`card ${active ? 'active' : ''}`} onClick={() => playStation(st)}>
         <div className="card-cover">
           <Cover station={st} />
+          {/* Most stations have DJ + ads; only the exceptions are flagged on the tiles. */}
+          {st.talk !== 'full' && <TalkBadge talk={st.talk} />}
           {heard > 0 && <span className="card-heard" style={{ '--pct': `${heard * 100}%` }} />}
           <span className="card-play">
             <Icon d={active && isCurrentLoaded && isPlaying ? PAUSE : PLAY} size={22} />
@@ -368,13 +514,19 @@ export default function App() {
           <span>Radio</span>
         </div>
         <nav>
-          {[{ id: 'all', name: 'Toutes' }, ...GAMES].map((g) => (
+          {[{ id: 'all', name: 'Toutes' }, ...(favs.length ? [{ id: 'favs', name: 'Favoris' }] : []), ...GAMES].map((g) => (
             <button key={g.id} className={`nav-item ${game === g.id ? 'active' : ''}`} onClick={() => setGame(g.id)}>
               <span>{g.name}</span>
-              <span className="count">{g.id === 'all' ? stations.length : stations.filter((st) => st.game === g.id).length}</span>
+              <span className="count">
+                {g.id === 'all' ? stations.length : g.id === 'favs' ? favs.length : stations.filter((st) => st.game === g.id).length}
+              </span>
             </button>
           ))}
         </nav>
+        <button className="drive-open" onClick={() => setDrive(true)}>
+          <Icon d={CAR} />
+          <span>Mode auto</span>
+        </button>
       </aside>
 
       <main className="main panel" style={{ '--accent': current?.color ?? '#535353' }}>
@@ -382,10 +534,30 @@ export default function App() {
           <div className="mobile-brand">
             <Icon d={RADIO} size={24} />
             <span>Radio</span>
+            <button className="drive-open" onClick={() => setDrive(true)}>
+              <Icon d={CAR} />
+              <span>Mode auto</span>
+            </button>
           </div>
           <input className="search" type="search" placeholder="Rechercher une station, un DJ, un genre…" value={query} onChange={(e) => setQuery(e.target.value)} />
-          {game !== 'all' && <h1>{gameLabel(game)}</h1>}
+          {game !== 'all' && <h1>{game === 'favs' ? 'Favoris' : gameLabel(game)}</h1>}
         </header>
+        {game === 'all' && !q && (
+          <>
+            {favs.length > 0 && (
+              <section className="shelf">
+                <h2>Tes favoris</h2>
+                <div className="row">{byIds(favs).map(renderCard)}</div>
+              </section>
+            )}
+            {recent.length > 0 && (
+              <section className="shelf">
+                <h2>Récemment écoutées</h2>
+                <div className="row">{byIds(recent).map(renderCard)}</div>
+              </section>
+            )}
+          </>
+        )}
         {game === 'all' ? (
           GAMES.map((g) => {
             const list = visible.filter((st) => st.game === g.id)
@@ -410,11 +582,23 @@ export default function App() {
         </button>
         {current ? (
           <div className="now-info">
-            <div className="now-title">{current.name}</div>
+            <div className="now-head">
+              <div className="now-title">{current.name}</div>
+              <button className={`ctrl fav ${isFav ? 'on' : ''}`} onClick={() => toggleFav(current)} title={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
+                <Icon d={isFav ? HEART : HEART_OUTLINE} size={24} />
+              </button>
+            </div>
             <div className="now-sub">
               {gameLabel(current.game)} · {eraLabel(current.era)}
             </div>
+            {song && <div className="song">♪ {song}</div>}
             <dl>
+              {current.talk && (
+                <>
+                  <dt>Contenu</dt>
+                  <dd>{TALK_LABELS[current.talk]}</dd>
+                </>
+              )}
               {current.dj && (
                 <>
                   <dt>DJ</dt>
@@ -443,7 +627,7 @@ export default function App() {
               <Cover key={current.id} station={current} className="cover--small" />
               <div>
                 <div className="player-title">{current.name}</div>
-                <div className="player-sub">{current.dj || gameLabel(current.game)}</div>
+                <div className="player-sub">{song || current.dj || gameLabel(current.game)}</div>
               </div>
             </>
           )}
@@ -463,6 +647,9 @@ export default function App() {
         </div>
 
         <div className="player-right">
+          <button className="ctrl" title="Mode auto" onClick={() => setDrive(true)}>
+            <Icon d={CAR} />
+          </button>
           <button
             className="ctrl"
             title="Muet"
@@ -494,12 +681,29 @@ export default function App() {
                 <Icon d={CHEVRON} size={30} />
               </button>
               <span>{gameLabel(current.game)}</span>
-              <span className="sheet-top-spacer" />
+              <span className="sheet-top-actions">
+                <button className={`ctrl fav ${isFav ? 'on' : ''}`} onClick={() => toggleFav(current)} aria-label="Favori">
+                  <Icon d={isFav ? HEART : HEART_OUTLINE} size={26} />
+                </button>
+                <button
+                  className="ctrl"
+                  onClick={() => {
+                    setExpanded(false)
+                    setDrive(true)
+                  }}
+                  aria-label="Mode auto"
+                >
+                  <Icon d={CAR} size={26} />
+                </button>
+              </span>
             </div>
             {/* The real YouTube iframe is positioned over this slot (see .audio-host--video). */}
             <div className="video-slot">{!isCurrentLoaded && <Cover key={current.id} station={current} />}</div>
             <div className="sheet-title">{current.name}</div>
-            <div className="sheet-sub">{[current.dj, current.genre, eraLabel(current.era)].filter(Boolean).join(' · ')}</div>
+            <div className="sheet-sub">
+              {[current.dj, current.genre, eraLabel(current.era)].filter(Boolean).join(' · ')} <TalkBadge talk={current.talk} />
+            </div>
+            {song && <div className="song">♪ {song}</div>}
             {progress}
             <div className="controls controls--big">
               {modeButton}
@@ -510,6 +714,21 @@ export default function App() {
             {yt.status === 'error' && <p className="error">Cette station ne joue pas en ce moment. Essaie-en une autre.</p>}
           </div>
         </div>
+      )}
+
+      {drive && (
+        <DriveMode
+          station={current}
+          song={song}
+          playIcon={playIcon}
+          modeButton={modeButton}
+          fav={isFav}
+          onFav={() => current && toggleFav(current)}
+          onToggle={togglePlay}
+          onStep={step}
+          onWheel={() => setWheelOpen(true)}
+          onClose={() => setDrive(false)}
+        />
       )}
 
       {wheelOpen && current && (
