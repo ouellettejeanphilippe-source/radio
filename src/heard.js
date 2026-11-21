@@ -1,4 +1,4 @@
-// Per-video listening history: { [videoId]: { d: duration, iv: [[start, end], ...] } }
+// Per-video listening history: { [videoId]: { d: duration, iv: [[start, end], ...], t: last change, r: last reset } }
 const KEY = 'radio:heard'
 const MIN_GAP = 60
 
@@ -30,6 +30,7 @@ export function addHeard(videoId, a, b, d) {
   const rec = all[videoId] || { d, iv: [] }
   rec.d = d || rec.d
   rec.iv = merge([...rec.iv, [Math.floor(a), Math.ceil(b)]])
+  rec.t = Date.now()
   all[videoId] = rec
   writeHeard(all)
   return all
@@ -37,9 +38,31 @@ export function addHeard(videoId, a, b, d) {
 
 export function clearHeard(videoId) {
   const all = readHeard()
-  delete all[videoId]
+  // Kept as an empty record so the reset also reaches the other devices (see mergeHeard).
+  if (all[videoId]) all[videoId] = { d: all[videoId].d, iv: [], t: Date.now(), r: Date.now() }
   writeHeard(all)
   return all
+}
+
+// Combines two devices' histories: what was heard on either counts, unless one side restarted
+// the station after the other's last listen.
+export function mergeHeard(a = {}, b = {}) {
+  const out = {}
+  for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const x = a[id]
+    const y = b[id]
+    if (!x || !y) out[id] = x || y
+    else if ((x.r || 0) > (y.t || 0)) out[id] = x
+    else if ((y.r || 0) > (x.t || 0)) out[id] = y
+    else
+      out[id] = {
+        d: x.d || y.d,
+        iv: merge([...x.iv, ...y.iv]),
+        t: Math.max(x.t || 0, y.t || 0),
+        ...((x.r || y.r) && { r: Math.max(x.r || 0, y.r || 0) }),
+      }
+  }
+  return out
 }
 
 export function heardRatio(rec) {

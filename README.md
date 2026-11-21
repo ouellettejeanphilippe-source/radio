@@ -16,9 +16,18 @@ Le repo ne contient **aucun contenu** : seulement l'interface et la liste des st
 - Chaque station indique ce qu'il y a dans l'enregistrement : DJ + pubs, DJ, musique seulement ou talk-show. Quand la description YouTube a la liste des chansons avec les minutages, la chanson en cours est affichée (aussi sur l'écran verrouillé). Ces infos viennent de `src/meta.json`, généré par `node scripts/meta.mjs`.
 - Si le navigateur met la lecture en pause en passant en arrière-plan, elle est relancée (utile en auto avec le GPS ouvert ; activer la lecture en arrière-plan dans Vivaldi/Brave ou utiliser Firefox).
 
+## Synchro entre appareils
+
+Dans **Réglages** (roue dentée en haut de l'accueil) : favoris, récents, mode, station en cours et bouts déjà entendus sont gardés dans un gist secret du compte GitHub de l'utilisateur (`src/sync.js`), sans serveur.
+
+- Premier appareil : un lien ouvre la création d'un jeton GitHub avec seulement la permission `gist` ; on choisit « No expiration », on colle le jeton, et l'app trouve ou crée le gist.
+- Autres appareils : « Ajouter un autre appareil » montre un code QR / lien (`#sync=…`, qui contient le jeton) ; l'ouvrir suffit.
+- Synchro à l'ouverture, au retour sur l'onglet, en quittant, toutes les 5 min, et 20 s après un changement. Les bouts entendus sont combinés ; pour le reste, le changement le plus récent gagne.
+- Restent propres à chaque appareil : volume, mode auto, connexions de scrobbling.
+
 ## Scrobbling (ListenBrainz, Last.fm)
 
-Le bouton note de musique en haut de l'accueil envoie les chansons écoutées à ListenBrainz et/ou Last.fm, directement depuis le navigateur (pas de serveur).
+Dans **Réglages**, on peut envoyer les chansons écoutées à ListenBrainz et/ou Last.fm, directement depuis le navigateur (pas de serveur).
 
 - Seules les stations avec une liste de chansons minutée dans `src/meta.json` comptent ; les pubs, DJ, infos et appels sont ignorés (`parseSong` dans `src/scrobble.js`).
 - « En écoute » est envoyé après 5 s, la chanson est comptée après la moitié (ou 4 min) entendue, si elle dure au moins 30 s. Les envois ratés (hors ligne) sont gardés et renvoyés plus tard.
