@@ -1,6 +1,6 @@
 # Radio
 
-Lecteur web (PWA installable) pour écouter les radios des jeux en monde ouvert — GTA (III à V, Stories, épisodes), Saints Row, Mafia, Cyberpunk 2077, Fallout — avec DJ et pubs, plus quelques créations de fans dans le même style.
+Lecteur web (PWA installable) pour écouter les radios des jeux en monde ouvert — GTA (III à V, Stories, épisodes), Saints Row, Mafia, Sleeping Dogs, Scarface, Watch Dogs, Forza Horizon, Cyberpunk 2077, Fallout — avec DJ et pubs, plus quelques créations de fans dans le même style.
 
 Le repo ne contient **aucun contenu** : seulement l'interface et la liste des stations. L'audio vient d'enregistrements complets sur YouTube (lecteur intégré caché) et les logos sont chargés depuis les wikis Fandom.
 

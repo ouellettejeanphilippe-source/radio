@@ -1,7 +1,7 @@
 {
   "name": "Radio",
   "short_name": "Radio",
-  "description": "Les radios des jeux en monde ouvert (GTA, Mafia…), avec DJ et pubs.",
+  "description": "Les radios des jeux en monde ouvert (GTA, Saints Row, Forza Horizon…), avec DJ et pubs.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",

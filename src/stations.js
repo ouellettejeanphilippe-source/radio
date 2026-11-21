@@ -8,6 +8,7 @@ export const ERAS = [
   { id: '90s', name: 'Années 90' },
   { id: '2000s', name: 'Années 2000' },
   { id: '2010s', name: 'Années 2010' },
+  { id: '2020s', name: 'Années 2020' },
   { id: 'future', name: 'Futur' },
 ]
 
@@ -26,6 +27,16 @@ export const GAMES = [
   { id: 'sr1', name: 'Saints Row', era: '2000s' },
   { id: 'mafia3', name: 'Mafia III', era: '60s' },
   { id: 'mafia2', name: 'Mafia II', era: '40s' },
+  { id: 'sdogs', name: 'Sleeping Dogs', era: '2010s' },
+  { id: 'scarface', name: 'Scarface: The World Is Yours', era: '80s' },
+  { id: 'fh6', name: 'Forza Horizon 6', era: '2020s' },
+  { id: 'fh5', name: 'Forza Horizon 5', era: '2020s' },
+  { id: 'fh4', name: 'Forza Horizon 4', era: '2010s' },
+  { id: 'fh3', name: 'Forza Horizon 3', era: '2010s' },
+  { id: 'fh2', name: 'Forza Horizon 2', era: '2010s' },
+  { id: 'fh1', name: 'Forza Horizon', era: '2010s' },
+  { id: 'wdl', name: 'Watch Dogs: Legion', era: 'future' },
+  { id: 'wd2', name: 'Watch Dogs 2', era: '2010s' },
   { id: 'cp2077', name: 'Cyberpunk 2077', era: 'future' },
   { id: 'fo4', name: 'Fallout 4', era: 'future' },
   { id: 'fonv', name: 'Fallout: New Vegas', era: 'future' },
@@ -38,6 +49,8 @@ const fandom = (wiki, path) => `https://static.wikia.nocookie.net/${wiki}/images
 const SR = (path) => fandom('saintsrow', path)
 const CP = (path) => fandom('cyberpunk', path)
 const FO = (path) => fandom('fallout', path)
+const WD = (path) => fandom('watchdogscombined', path)
+const FZ = (path) => fandom('forzamotorsport', path)
 
 const s = (game, name, dj, genre, color, youtube = '', logo = '') => ({
   id: `${game}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
@@ -185,6 +198,85 @@ const LIST = [
   s('sr4', '102.4 Klassic FM', 'Zinyak', 'Classique', '#c7a17a', 'F9Ute0EENuw', SR('8/84/Klassic_102.4_-_Saints_Row_IV_logo_featuring_Zinyak_bust.png')),
   s('sr4', 'Four-20 103.6', '', 'Reggae', '#44bd32', 'L0rxUeGARUE', SR('2/29/Four-20_103.6_transparent_logo.png')),
   s('sr4', 'Mad Decent 106.9', 'Riff Raff', 'Électro', '#fdcb6e', 'QBZ_MX1hmG8', SR('1/17/Mad_Decent_106.9_logo.png')),
+
+  // Sleeping Dogs: real-world labels use their own logos from Wikimedia; the fictional stations have none.
+  s('sdogs', 'Sagittarius FM', '', 'Rock / New wave', '#e84393', 'DP1M3KflPUo'),
+  s('sdogs', 'Daptone Radio', '', 'Soul / Funk', '#d35400', 'FKWc7yB-0wE', 'https://upload.wikimedia.org/wikipedia/en/e/e1/Daptone_Records_logo.jpg'),
+  s('sdogs', 'Real FM', '', 'Hip-hop', '#2f3640', 'tHZF__xY-Wo'),
+  s('sdogs', 'H-Klub Radio', '', 'Cantopop / Hip-hop', '#eb3b5a', 'qs-I9oPIewU'),
+  s('sdogs', 'Softly', '', 'Classiques chinois', '#c7a17a', 'RBURJP4baD4'),
+  s('sdogs', 'Kerrang! Radio', '', 'Rock indé', '#b71540', '5rAB2wVS0ew', 'https://upload.wikimedia.org/wikipedia/en/9/92/Kerrang_Radio.png'),
+  s('sdogs', 'Ninja Tune Radio', '', 'Électro', '#00cec9', 'KjbPtmHoDGI', 'https://upload.wikimedia.org/wikipedia/commons/b/b7/Ninja_Tune_logo.svg'),
+  s('sdogs', 'Roadrunner Records', '', 'Métal', '#2d3436', '3FcDwx_7p78', 'https://upload.wikimedia.org/wikipedia/commons/c/c0/Roadrunner_Records_logo_2016.svg'),
+  s('sdogs', 'Warp Radio', '', 'Électro', '#6c5ce7', 'wWs9HrfDtKo', 'https://upload.wikimedia.org/wikipedia/commons/7/75/Warp-Records-Logo.svg'),
+  s('sdogs', 'Boosey & Hawkes', '', 'Classique', '#16a085', '-GVm-oUyu-I', 'https://upload.wikimedia.org/wikipedia/commons/c/c5/Boosey_%26_Hawkes_logo.svg'),
+
+  // Scarface has no stations, only genre libraries in cars (no DJ, no ads).
+  s('scarface', 'Hip Hop', '', 'Hip-hop', '#f39c12', '7MD0BIYOWR0'),
+  s('scarface', 'Reggae', '', 'Reggae / Reggaeton', '#27ae60', '1Gmzpa254G0'),
+  s('scarface', 'Rock', '', 'Rock', '#c0392b', 'gc9X5r6ZehM'),
+  s('scarface', 'Latin', '', 'Salsa / Latino', '#eb3b5a', 'iRfzVD0o40U'),
+  s('scarface', "80's Pop", '', 'Pop 80s', '#e84393', 'sWd5xpgCQIg'),
+  s('scarface', 'Scarface (film)', '', 'Synth-pop / Disco', '#6c5ce7', 'T8b6inHi39o'),
+
+  s('fh1', 'Horizon Pulse', 'Holly Cruz', 'Électro-pop', '#e84393', 'RhJJjbLzfuk', FZ('e/ed/FH_HorizonPulse_Logo.png')),
+  s('fh1', 'Horizon Bass Arena', 'Scott Tyler', 'Électro', '#6c5ce7', 'lyampo-uhFk', FZ('3/3c/FH_HorizonBassArena_Logo.png')),
+  s('fh1', 'Horizon Rocks', 'Phoenix Fox', 'Rock', '#c0392b', '2MAe2vbSGoQ', FZ('5/5d/FH_HorizonRocks_Logo.png')),
+
+  s('fh2', 'Horizon Pulse', 'Amy Simpson', 'Électro-pop', '#e84393', 'qxI--iuu_WY', FZ('e/eb/FH2_HorizonPulse_Logo.png')),
+  s('fh2', 'Horizon Bass Arena', 'Scott Tyler', 'Électro', '#6c5ce7', 'hthlHBJb2J8', FZ('d/d4/FH2_Horizon_Bass_Arena_logo.png')),
+  s('fh2', 'Horizon XS', 'Dan Williams', 'Rock', '#c0392b', 'inrs5OkUMdM', FZ('8/88/FH2_Horizon_XS_Logo.png')),
+  s('fh2', 'Hospital Records', 'Chris Goss & London Elektricity', 'Drum & bass', '#00b894', 'rpmj00-95SI', FZ('b/b0/ForzaHorizon2_Hospital_1eflt6e.webp')),
+  s('fh2', 'Innovative Leisure Radio', 'Hanni El Khatib', 'Indie', '#fdcb6e', 'xZS9kw_bncY', FZ('0/0f/FH2_Innovative_Leisure_Radio_Logo.png')),
+  s('fh2', 'Ninja Tune Radio', 'Toddla T', 'Hip-hop', '#2d3436', '9uuWsK1waBA', FZ('5/55/FH2_Ninja_Tune_Radio_Logo.png')),
+  s('fh2', 'Radio Levante', 'Giovanni Lombardi', 'Classique', '#c7a17a', 'xoBxuPFFEOA', FZ('e/ed/FH2_Radio_Levante_Logo.png')),
+
+  s('fh3', 'Horizon Pulse', 'Amy Simpson', 'Électro-pop', '#e84393', 'sraCJJjF_YE', FZ('1/1e/FH3_Radio_Pulse.png')),
+  s('fh3', 'Horizon Bass Arena', 'Scott Tyler', 'Électro', '#6c5ce7', 'QTaDoynjSS4', FZ('5/54/FH3_Radio_BassArena.png')),
+  s('fh3', 'Hospital Records', 'Goss & London Elektricity', 'Drum & bass', '#00b894', 'JQkipyUYBEY', FZ('6/60/FH_Radio_Hospital.png')),
+  s('fh3', 'Epitaph Records', 'Keith Buckley', 'Punk', '#2d3436', '2MxnwtvwYNI', FZ('d/d4/FH_Radio_Epitaph.png')),
+  s('fh3', 'Future Classic Radio', 'Touch Sensitive', 'Électro', '#00cec9', 'AuJ2yc4qtGQ', FZ('a/a9/FH_Radio_FutureClassic.png')),
+  s('fh3', 'Timeless FM', 'Don Thompson', 'Classique', '#c7a17a', '7lCXTLFp-DQ', FZ('c/cb/FH_Radio_Timeless.png')),
+  s('fh3', 'Vagrant Records', 'Van Pierszalowski', 'Rock', '#e17055', 'meS0x4_rzc0', FZ('d/d8/FH_Radio_Vagrant.png')),
+
+  s('fh4', 'Horizon Pulse', 'Amy Simpson', 'Électro-pop', '#e84393', 'LZb0MQIxbOE', FZ('1/1e/FH3_Radio_Pulse.png')),
+  s('fh4', 'Horizon Bass Arena', 'Scott Tyler', 'Électro', '#6c5ce7', 'BvYTwIoBEIE', FZ('f/f2/FH4_Horizon_Bass_Arena.png')),
+  s('fh4', 'Horizon XS', 'Mal Delaney', 'Rock', '#c0392b', 'Ur8DiWGxH64', FZ('6/6c/FH4_Horizon_XS_Logo.png')),
+  s('fh4', 'Hospital Records', 'Goss & London Elektricity', 'Drum & bass', '#00b894', 'ZFBNNXk3Pgo', FZ('6/60/FH_Radio_Hospital.png')),
+  s('fh4', 'Timeless FM', 'Don Thompson', 'Classique', '#c7a17a', 'HHMCwQAHXnM', FZ('c/cb/FH_Radio_Timeless.png')),
+
+  s('fh5', 'Horizon Pulse', 'Amy Simpson', 'Électro-pop', '#e84393', '3MXGepQLBv4', FZ('9/9e/FH5_PulseRadio_Logo.png')),
+  s('fh5', 'Horizon Bass Arena', 'Scott Tyler', 'Électro', '#6c5ce7', 'a4c6S3xUHGw', FZ('3/38/FH5_BassArenaRadio_Logo.png')),
+  s('fh5', 'Horizon Block Party', 'MistaJam', 'Hip-hop', '#f39c12', '1sTxwnHi6Cc', FZ('c/c2/FH5_BlockPartyRadio_Logo.png')),
+  s('fh5', 'Hospital Records', 'Chris Goss & Degs', 'Drum & bass', '#00b894', '3qpzcJByVw8', FZ('d/d6/FH5_HospitalRadio_Logo.png')),
+  s('fh5', 'Radio Eterna', 'Delores Martin', 'Classique', '#c7a17a', 'eWhgUQeran4', FZ('e/eb/FH5_EternaRadio_Logo.png')),
+  s('fh5', 'Horizon Mixtape', 'Scott Tyler', 'Mixte', '#fd79a8', '7_8piw9LTvs', FZ('e/e6/FH5_MixtapeRadio_Logo.png')),
+  s('fh5', 'Horizon Wave', 'Isabel Moss', 'Synthwave', '#a55eea', 'qjL7aCzgEUs', FZ('e/e6/FH5_HorizonWaveRadio_Logo.png')),
+  s('fh5', 'Epitaph Records', 'Chad Tepper', 'Punk', '#2d3436', 'WP3kGoFVmZI', FZ('c/cc/FH5_Radio_Epitaph.png')),
+
+  s('fh6', 'Horizon Pulse', 'Amy Simpson', 'Électro-pop', '#e84393', 'iHGQxI3frEk', FZ('2/2d/FH6_RadioStations_HorizonPulse.png')),
+  s('fh6', 'Horizon Bass Arena', 'Scott Tyler', 'Électro', '#6c5ce7', 'IFpAMQPeCgM', FZ('2/24/FH6_RadioStations_HorizonBassArena.png')),
+  s('fh6', 'Horizon Block Party', 'Carla Rose', 'Hip-hop', '#f39c12', 'is5EUK9sKRQ', FZ('2/2b/FH6_RadioStations_HorizonBlockParty.png')),
+  s('fh6', 'Horizon Opus', 'Takehiro Sato', 'Classique', '#c7a17a', '5dxV2e9tvDI', FZ('9/96/FH6_RadioStations_HorizonOpus.png')),
+  s('fh6', 'Horizon Wave', 'Isabel Moss', 'Synthwave', '#a55eea', 'PIKCkghfF6o', FZ('8/81/FH6_RadioStations_HorizonWave.png')),
+  s('fh6', 'Horizon XS', 'Simon Neil', 'Rock', '#c0392b', 'CuOrUFG7ACA', FZ('9/93/FH6_RadioStations_HorizonXS.png')),
+  s('fh6', 'Hospital Records', 'Chris Goss & Dynamite MC', 'Drum & bass', '#00b894', 'QZPrusUxLMM', FZ('5/58/FH6_RadioStations_HospitalRecords.png')),
+  s('fh6', 'Gacha City Radio', 'Toko Ito', 'J-pop', '#ff6b81', 'tfzjCgm2Gbg', FZ('0/0c/FH6_RadioStations_GachaCityRadio.png')),
+
+  s('wd2', 'Rock The Bridge K66-FM', '', 'Rock', '#c0392b', '1PGhCFeiJ58', WD('e/e0/RockTheBridge.png')),
+  s('wd2', 'DedSec Pirate Radio', '', 'Électro', '#00cec9', 'FLGfuuNMRdE', WD('0/0d/DedSecPirateRadio.png')),
+  s('wd2', 'Radio Bay Nation KBNT', '', 'Hip-hop', '#f39c12', 'QJuxe_KHg7o', WD('9/93/RadioBay.png')),
+  s('wd2', 'Bay City Pop KBY-FM', '', 'Pop', '#fd79a8', '0sNko-G42j4', WD('5/5d/BayCityPop.png')),
+  s('wd2', 'Las Ondas De La Ria KODR', '', 'Latino / Reggae', '#27ae60', 'JrFcWSoMvSg', WD('b/b0/LasOndas.png')),
+  s('wd2', 'Centuries Classical KCE-FM', '', 'Classique', '#c7a17a', 'rS5lLiJL-lE', WD('a/a0/CenturiesClassicalFM.png')),
+
+  s('wdl', 'BuccanEar', 'Tash', 'Talk', '#2c3e50', 'G2DdZ9UEb8A'),
+  s('wdl', 'Classical', '', 'Classique', '#c7a17a', 'iSaENNcZ_9U'),
+  s('wdl', 'Electronic', '', 'Électro', '#00cec9', 'Sv2z2cKKA-0'),
+  s('wdl', 'Hip Hop', '', 'Hip-hop', '#f39c12', '1d-M_4m7CsY'),
+  s('wdl', 'Rock / Hardcore', '', 'Rock', '#c0392b', 'uBY4JW_5Q1I'),
+  s('wdl', 'Punk Rock', '', 'Punk', '#e84393', 'VrZVE1aJGko'),
+  s('wdl', 'Indie / Alt / Pop', '', 'Pop', '#6c5ce7', 'ruodPKp75tc'),
 
   s('cp2077', '89.3 Radio Vexelstrom', '', 'Rock indus / Électro', '#d63031', 'k73XuyU8qvo', CP('c/ca/89.3_Radio_Vexelstrom.png')),
   s('cp2077', '89.7 Growl FM', 'Ash', 'Alternatif', '#e17055', '32nAfJjMYgs', CP('a/ae/89.7_Growl_FM.png')),
