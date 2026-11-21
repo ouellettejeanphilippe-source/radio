@@ -16,6 +16,15 @@ Le repo ne contient **aucun contenu** : seulement l'interface et la liste des st
 - Chaque station indique ce qu'il y a dans l'enregistrement : DJ + pubs, DJ, musique seulement ou talk-show. Quand la description YouTube a la liste des chansons avec les minutages, la chanson en cours est affichée (aussi sur l'écran verrouillé). Ces infos viennent de `src/meta.json`, généré par `node scripts/meta.mjs`.
 - Si le navigateur met la lecture en pause en passant en arrière-plan, elle est relancée (utile en auto avec le GPS ouvert ; activer la lecture en arrière-plan dans Vivaldi/Brave ou utiliser Firefox).
 
+## Scrobbling (ListenBrainz, Last.fm)
+
+Le bouton note de musique en haut de l'accueil envoie les chansons écoutées à ListenBrainz et/ou Last.fm, directement depuis le navigateur (pas de serveur).
+
+- Seules les stations avec une liste de chansons minutée dans `src/meta.json` comptent ; les pubs, DJ, infos et appels sont ignorés (`parseSong` dans `src/scrobble.js`).
+- « En écoute » est envoyé après 5 s, la chanson est comptée après la moitié (ou 4 min) entendue, si elle dure au moins 30 s. Les envois ratés (hors ligne) sont gardés et renvoyés plus tard.
+- **ListenBrainz** : coller son jeton (listenbrainz.org/settings).
+- **Last.fm** : il faut une clé d'application ([last.fm/api/account/create](https://www.last.fm/api/account/create)). Soit chacun entre la sienne dans l'app, soit on la met dans les secrets GitHub `LASTFM_KEY` et `LASTFM_SECRET` (repo → Settings → Secrets and variables → Actions) pour qu'elle soit incluse au déploiement. Le secret se retrouve forcément dans le code publié : sans gravité pour une clé d'usage perso.
+
 ## Stations
 
 Tout est dans `src/stations.js` : jeu, nom, DJ, genre, couleur, vidéo YouTube et logo.
