@@ -32,6 +32,9 @@ export function useYouTubePlayer(hostRef) {
   const needsStartRef = useRef(false)
   // Last sampled position; null after a seek/load so jumps aren't counted as heard.
   const lastRef = useRef(null)
+  const userPausedRef = useRef(false)
+  const hiddenAtRef = useRef(0)
+  const visibleAtRef = useRef(Date.now())
   const [status, setStatus] = useState('idle')
   const [time, setTime] = useState({ current: 0, duration: 0 })
   const [heard, setHeard] = useState(readHeard)
@@ -71,7 +74,18 @@ export function useYouTubePlayer(hostRef) {
                 lastRef.current = null
               }
               setStatus('playing')
-            } else if (e.data === S.PAUSED) setStatus('paused')
+            } else if (e.data === S.PAUSED) {
+              // The embed pauses itself when the page is hidden (phone switched to another app).
+              // A pause right after hiding that the user didn't ask for gets undone; later pauses
+              // (e.g. from lock-screen controls) are respected.
+              const hidden = document.visibilityState === 'hidden'
+              const justHidden = hidden && (hiddenAtRef.current < visibleAtRef.current || Date.now() - hiddenAtRef.current < 3000)
+              if (justHidden && !userPausedRef.current) {
+                e.target.playVideo()
+                return
+              }
+              setStatus('paused')
+            }
             else if (e.data === S.BUFFERING) setStatus('buffering')
             else if (e.data === S.ENDED) {
               lastRef.current = null
@@ -83,8 +97,14 @@ export function useYouTubePlayer(hostRef) {
         },
       })
     })
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') hiddenAtRef.current = Date.now()
+      else visibleAtRef.current = Date.now()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onVisibility)
       playerRef.current?.destroy()
       playerRef.current = null
       readyRef.current = false
@@ -116,6 +136,7 @@ export function useYouTubePlayer(hostRef) {
     videoIdRef.current = videoId
     needsStartRef.current = true
     lastRef.current = null
+    userPausedRef.current = false
     setStatus('buffering')
     setTime({ current: 0, duration: 0 })
     if (readyRef.current) playerRef.current.loadVideoById(videoId)
@@ -125,7 +146,9 @@ export function useYouTubePlayer(hostRef) {
   const toggle = useCallback(() => {
     const p = playerRef.current
     if (!readyRef.current) return
-    if (p.getPlayerState() === window.YT.PlayerState.PLAYING) p.pauseVideo()
+    const playing = p.getPlayerState() === window.YT.PlayerState.PLAYING
+    userPausedRef.current = playing
+    if (playing) p.pauseVideo()
     else p.playVideo()
   }, [])
 
