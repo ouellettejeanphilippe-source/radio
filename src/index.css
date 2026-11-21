@@ -135,11 +135,6 @@ button:disabled {
   position: relative;
   margin-bottom: 8px;
 }
-.card.active .cover {
-  box-shadow:
-    0 0 0 3px #fff,
-    0 8px 24px rgba(0, 0, 0, 0.6);
-}
 .card-title {
   font-size: 14px;
   font-weight: 800;
