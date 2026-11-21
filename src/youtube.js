@@ -34,7 +34,7 @@ export function useYouTubePlayer(hostRef) {
   const lastRef = useRef(null)
   const userPausedRef = useRef(false)
   const hiddenAtRef = useRef(0)
-  const visibleAtRef = useRef(Date.now())
+  const visibleAtRef = useRef(0)
   const [status, setStatus] = useState('idle')
   const [time, setTime] = useState({ current: 0, duration: 0 })
   const [heard, setHeard] = useState(readHeard)
