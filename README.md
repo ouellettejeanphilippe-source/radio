@@ -1,24 +1,20 @@
 # Radio
 
-Lecteur web style Spotify pour écouter les stations de radio des jeux GTA (musique + DJ + pubs) à partir de mixes complets hébergés sur YouTube.
+Lecteur web (PWA installable) pour écouter les radios des jeux en monde ouvert — GTA (III à V, Stories, épisodes), Saints Row, Mafia, Cyberpunk 2077, Fallout — avec DJ et pubs, plus quelques créations de fans dans le même style.
 
-Le repo ne contient **aucun contenu** : seulement l'interface et la liste des stations. L'audio est joué via le lecteur YouTube intégré.
+Le repo ne contient **aucun contenu** : seulement l'interface et la liste des stations. L'audio vient d'enregistrements complets sur YouTube (lecteur intégré caché) et les logos sont chargés depuis les wikis Fandom.
 
 ## Fonctionnement
 
-- Chaque station pointe vers une vidéo YouTube d'un mix complet.
-- Les bouts déjà entendus sont enregistrés pour chaque mix (localStorage).
-- À chaque lancement, on part près du début du plus long bout pas encore entendu, avec un petit décalage au hasard. Le mix est traité comme une boucle, donc la première écoute part n'importe où.
-- Quand il ne reste plus de bout neuf d'au moins une minute, l'historique de la station repart à zéro.
-- Le panneau « En lecture » montre la carte de ce qui a déjà été écouté, avec un bouton pour la réinitialiser.
-- La dernière station écoutée et le volume sont aussi mémorisés.
-- Raccourcis : espace = lecture/pause, touches média du clavier supportées.
+- Toucher une station la fait jouer. Le mini-lecteur du bas ouvre le lecteur complet (vidéo, contrôles, roue des radios).
+- Glisser le mini-lecteur (ou le lecteur complet) à gauche/droite change de poste selon le mode : **même jeu**, **même époque** (époque où se passe le jeu) ou **aléatoire**.
+- La roue des radios montre les stations du jeu en cours, comme dans GTA.
+- Les bouts déjà entendus sont enregistrés par station ; chaque lancement repart près du début du plus long bout pas encore entendu.
+- Si le navigateur met la lecture en pause en passant en arrière-plan, elle est relancée (utile en auto avec le GPS ouvert ; activer la lecture en arrière-plan dans Vivaldi/Brave ou utiliser Firefox).
 
-## Ajouter les liens
+## Stations
 
-Dans `src/stations.js` : `youtube` (URL ou ID) et `logo` (URL d'image, optionnel). Les stations sans lien ne sont pas affichées.
-
-Sans logo, la pochette utilise la miniature YouTube, sinon une tuile générée avec la couleur de la station.
+Tout est dans `src/stations.js` : jeu, nom, DJ, genre, couleur, vidéo YouTube et logo.
 
 ## Développement
 
@@ -29,4 +25,4 @@ npm run dev
 
 ## Déploiement
 
-GitHub Pages via `.github/workflows/deploy.yml` à chaque push sur `main`. Dans les réglages du repo : **Settings → Pages → Source : GitHub Actions**.
+GitHub Pages via `.github/workflows/deploy.yml` à chaque push sur `main`.
