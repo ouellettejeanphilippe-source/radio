@@ -276,8 +276,34 @@ function DriveMode({ station, song, playIcon, modeButton, fav, onFav, onToggle, 
   )
 }
 
+const LEFT = 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z'
+const RIGHT = 'M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z'
+
+// A titled horizontal row of stations; arrows scroll it with a mouse.
+function Shelf({ title, children }) {
+  const rowRef = useRef(null)
+  const scroll = (dir) => rowRef.current.scrollBy({ left: dir * rowRef.current.clientWidth * 0.8, behavior: 'smooth' })
+  return (
+    <section className="shelf">
+      <div className="shelf-head">
+        <h2>{title}</h2>
+        <span className="shelf-arrows">
+          <button className="ctrl" onClick={() => scroll(-1)} aria-label="Défiler à gauche">
+            <Icon d={LEFT} size={26} />
+          </button>
+          <button className="ctrl" onClick={() => scroll(1)} aria-label="Défiler à droite">
+            <Icon d={RIGHT} size={26} />
+          </button>
+        </span>
+      </div>
+      <div className="row" ref={rowRef}>
+        {children}
+      </div>
+    </section>
+  )
+}
+
 export default function App() {
-  const [game, setGame] = useState('all')
   const [query, setQuery] = useState('')
   const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
   const [loadedId, setLoadedId] = useState(null)
@@ -297,11 +323,7 @@ export default function App() {
   const stations = STATIONS_PLAYABLE
   const current = stations.find((st) => st.id === currentId)
   const q = query.trim().toLowerCase()
-  const visible = stations.filter(
-    (st) =>
-      (game === 'all' || st.game === game || (game === 'favs' && favs.includes(st.id))) &&
-      (!q || `${st.name} ${st.dj} ${st.genre}`.toLowerCase().includes(q)),
-  )
+  const visible = stations.filter((st) => !q || `${st.name} ${st.dj} ${st.genre}`.toLowerCase().includes(q))
   const byIds = (ids) => ids.map((id) => stations.find((st) => st.id === id)).filter(Boolean)
   const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
@@ -510,28 +532,7 @@ export default function App() {
     <div className={`app ${expanded ? 'is-expanded' : ''}`}>
       <div ref={hostRef} className={`audio-host ${expanded && isCurrentLoaded ? 'audio-host--video' : ''}`} aria-hidden="true" />
 
-      <aside className="sidebar panel">
-        <div className="brand">
-          <Icon d={RADIO} size={28} />
-          <span>Radio</span>
-        </div>
-        <nav>
-          {[{ id: 'all', name: 'Toutes' }, ...(favs.length ? [{ id: 'favs', name: 'Favoris' }] : []), ...GAMES].map((g) => (
-            <button key={g.id} className={`nav-item ${game === g.id ? 'active' : ''}`} onClick={() => setGame(g.id)}>
-              <span>{g.name}</span>
-              <span className="count">
-                {g.id === 'all' ? stations.length : g.id === 'favs' ? favs.length : stations.filter((st) => st.game === g.id).length}
-              </span>
-            </button>
-          ))}
-        </nav>
-        <button className="drive-open" onClick={() => setDrive(true)}>
-          <Icon d={CAR} />
-          <span>Mode auto</span>
-        </button>
-      </aside>
-
-      <main className="main panel" style={{ '--accent': current?.color ?? '#535353' }}>
+      <main className="main" style={{ '--accent': current?.color ?? '#535353' }}>
         <header className="main-header">
           <div className="mobile-brand">
             <Icon d={RADIO} size={24} />
@@ -542,81 +543,20 @@ export default function App() {
             </button>
           </div>
           <input className="search" type="search" placeholder="Rechercher une station, un DJ, un genre…" value={query} onChange={(e) => setQuery(e.target.value)} />
-          {game !== 'all' && <h1>{game === 'favs' ? 'Favoris' : gameLabel(game)}</h1>}
         </header>
-        {game === 'all' && !q && (
-          <>
-            {favs.length > 0 && (
-              <section className="shelf">
-                <h2>Tes favoris</h2>
-                <div className="row">{byIds(favs).map(renderCard)}</div>
-              </section>
-            )}
-            {recent.length > 0 && (
-              <section className="shelf">
-                <h2>Récemment écoutées</h2>
-                <div className="row">{byIds(recent).map(renderCard)}</div>
-              </section>
-            )}
-          </>
-        )}
-        {game === 'all' ? (
-          GAMES.map((g) => {
-            const list = visible.filter((st) => st.game === g.id)
-            if (!list.length) return null
-            return (
-              <section key={g.id} className="shelf">
-                <h2>{g.name}</h2>
-                <div className="row">{list.map(renderCard)}</div>
-              </section>
-            )
-          })
-        ) : (
-          <div className="grid">{visible.map(renderCard)}</div>
-        )}
+        {!q && favs.length > 0 && <Shelf title="Tes favoris">{byIds(favs).map(renderCard)}</Shelf>}
+        {!q && recent.length > 0 && <Shelf title="Récemment écoutées">{byIds(recent).map(renderCard)}</Shelf>}
+        {GAMES.map((g) => {
+          const list = visible.filter((st) => st.game === g.id)
+          if (!list.length) return null
+          return (
+            <Shelf key={g.id} title={g.name}>
+              {list.map(renderCard)}
+            </Shelf>
+          )
+        })}
         {!visible.length && <p className="empty">Aucune station trouvée.</p>}
       </main>
-
-      <aside className="now panel">
-        <h3>En lecture</h3>
-        <button className="now-art" onClick={() => current && setExpanded(true)} disabled={!current}>
-          {current ? <Cover key={current.id} station={current} /> : <Icon d={RADIO} size={64} />}
-        </button>
-        {current ? (
-          <div className="now-info">
-            <div className="now-head">
-              <div className="now-title">{current.name}</div>
-              <button className={`ctrl fav ${isFav ? 'on' : ''}`} onClick={() => toggleFav(current)} title={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
-                <Icon d={isFav ? HEART : HEART_OUTLINE} size={24} />
-              </button>
-            </div>
-            <div className="now-sub">
-              {gameLabel(current.game)} · {eraLabel(current.era)}
-            </div>
-            {song && <div className="song">♪ {song}</div>}
-            <dl>
-              {current.talk && (
-                <>
-                  <dt>Contenu</dt>
-                  <dd>{TALK_LABELS[current.talk]}</dd>
-                </>
-              )}
-              {current.dj && (
-                <>
-                  <dt>DJ</dt>
-                  <dd>{current.dj}</dd>
-                </>
-              )}
-              <dt>Genre</dt>
-              <dd>{current.genre}</dd>
-            </dl>
-            <HeardMap rec={yt.heard[current.videoId]} position={isCurrentLoaded ? yt.time.current : null} onReset={() => yt.resetHeard(current.videoId)} />
-            {yt.status === 'error' && <p className="error">Cette station ne joue pas en ce moment. Essaie-en une autre.</p>}
-          </div>
-        ) : (
-          <p className="now-empty">Choisis une station pour commencer.</p>
-        )}
-      </aside>
 
       <footer className={`player ${current ? '' : 'player--empty'}`} style={{ '--accent': current?.color ?? '#535353' }} {...miniSwipe}>
         <button
@@ -634,45 +574,17 @@ export default function App() {
             </>
           )}
         </button>
+        {/* No swipe with a mouse: prev/next show up next to play on computers. */}
+        <button className="player-step" onClick={() => step(-1)} aria-label="Station précédente">
+          <Icon d={PREV} size={22} />
+        </button>
         <button className="player-mini-play" onClick={togglePlay} aria-label="Lecture / pause">
           <Icon d={playIcon} size={26} />
         </button>
+        <button className="player-step" onClick={() => step(1)} aria-label="Station suivante">
+          <Icon d={NEXT} size={22} />
+        </button>
         <span className="player-line" style={{ '--pct': `${pct}%` }} />
-
-        <div className="player-center">
-          <div className="controls">
-            {modeButton}
-            {transport}
-            {wheelButton}
-          </div>
-          {progress}
-        </div>
-
-        <div className="player-right">
-          <button className="ctrl" title="Mode auto" onClick={() => setDrive(true)}>
-            <Icon d={CAR} />
-          </button>
-          <button
-            className="ctrl"
-            title="Muet"
-            onClick={() => {
-              if (yt.volume > 0) {
-                setLastVolume(yt.volume)
-                yt.setVolume(0)
-              } else yt.setVolume(lastVolume || 80)
-            }}
-          >
-            <Icon d={yt.volume > 0 ? VOL : MUTE} />
-          </button>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={yt.volume}
-            onChange={(e) => yt.setVolume(Number(e.target.value))}
-            style={{ '--pct': `${yt.volume}%` }}
-          />
-        </div>
       </footer>
 
       {expanded && current && (
@@ -711,6 +623,29 @@ export default function App() {
               {modeButton}
               {transport}
               {wheelButton}
+            </div>
+            {/* Phones use their volume buttons; this only shows with a mouse. */}
+            <div className="volume">
+              <button
+                className="ctrl"
+                title="Muet"
+                onClick={() => {
+                  if (yt.volume > 0) {
+                    setLastVolume(yt.volume)
+                    yt.setVolume(0)
+                  } else yt.setVolume(lastVolume || 80)
+                }}
+              >
+                <Icon d={yt.volume > 0 ? VOL : MUTE} />
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={yt.volume}
+                onChange={(e) => yt.setVolume(Number(e.target.value))}
+                style={{ '--pct': `${yt.volume}%` }}
+              />
             </div>
             <HeardMap rec={yt.heard[current.videoId]} position={isCurrentLoaded ? yt.time.current : null} onReset={() => yt.resetHeard(current.videoId)} />
             {yt.status === 'error' && <p className="error">Cette station ne joue pas en ce moment. Essaie-en une autre.</p>}
