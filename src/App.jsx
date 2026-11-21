@@ -33,7 +33,6 @@ const PREV = 'M6 6h2v12H6zm3.5 6 8.5 6V6z'
 const NEXT = 'M16 6h2v12h-2zM6 18l8.5-6L6 6z'
 const VOL = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.47 4.47 0 0 0 2.5-4z'
 const MUTE = 'M3 9v6h4l5 5V4L7 9H3zm13.59 3L19 9.59 17.59 8.17 15.17 10.6 12.76 8.17 11.34 9.59 13.76 12l-2.42 2.41 1.42 1.42 2.41-2.42 2.42 2.42L19 14.41z'
-const CHEVRON = 'M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z'
 const RADIO ='M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM7 20a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm13-8h-2v-2h-2v2H4V8h16v4z'
 
 function Cover({ station, className = '' }) {
@@ -85,8 +84,6 @@ export default function App() {
   const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
   const [loadedId, setLoadedId] = useState(null)
   const [lastVolume, setLastVolume] = useState(80)
-  const [expanded, setExpanded] = useState(false)
-  const touchY = useRef(0)
   const hostRef = useRef(null)
   const yt = useYouTubePlayer(hostRef)
 
@@ -280,7 +277,7 @@ export default function App() {
       </aside>
 
       <footer className={`player ${current ? '' : 'player--empty'}`} style={{ '--accent': current?.color ?? '#535353' }}>
-        <div className="player-left" onClick={() => current && setExpanded(true)}>
+        <div className="player-left">
           {current && (
             <>
               <Cover key={current.id + current.videoId} station={current} className="cover--small" />
@@ -324,36 +321,6 @@ export default function App() {
           />
         </div>
       </footer>
-
-      {expanded && current && (
-        <div
-          className="sheet"
-          style={{ '--accent': current.color }}
-          onTouchStart={(e) => (touchY.current = e.touches[0].clientY)}
-          onTouchEnd={(e) => {
-            if (e.changedTouches[0].clientY - touchY.current > 90) setExpanded(false)
-          }}
-        >
-          <div className="sheet-top">
-            <button className="ctrl" onClick={() => setExpanded(false)} aria-label="Fermer">
-              <Icon d={CHEVRON} size={28} />
-            </button>
-            <span>{gameLabel(current.game)}</span>
-            <span style={{ width: 28 }} />
-          </div>
-          <div className={`sheet-art ${isCurrentLoaded && isPlaying ? 'playing' : ''}`}>
-            <Cover key={current.id + current.videoId} station={current} />
-          </div>
-          <div className="sheet-title">{current.name}</div>
-          <div className="sheet-sub">{[current.dj, current.genre].filter(Boolean).join(' · ')}</div>
-          {progress}
-          {controls}
-          {current.videoId && (
-            <HeardMap rec={yt.heard[current.videoId]} position={isCurrentLoaded ? yt.time.current : null} onReset={() => yt.resetHeard(current.videoId)} />
-          )}
-          {yt.status === 'error' && <p className="error">Cette station ne joue pas en ce moment. Essaie-en une autre.</p>}
-        </div>
-      )}
     </div>
   )
 }

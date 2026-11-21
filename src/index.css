@@ -462,8 +462,7 @@ input[type='range']:disabled {
 .mobile-brand,
 .chips,
 .player-mini-play,
-.player-line,
-.sheet {
+.player-line {
   display: none;
 }
 
@@ -585,7 +584,6 @@ input[type='range']:disabled {
   }
   .player-left {
     flex: 1;
-    cursor: pointer;
   }
   .player-left .cover--small {
     width: 48px;
@@ -610,92 +608,5 @@ input[type='range']:disabled {
     height: 2px;
     border-radius: 1px;
     background: linear-gradient(90deg, #fff var(--pct), rgba(255, 255, 255, 0.25) var(--pct));
-  }
-
-  /* Full-screen player */
-  .sheet {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    inset: 0;
-    z-index: 20;
-    padding: calc(10px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 65%, #121212) 0, #121212 85%);
-    overflow-y: auto;
-    animation: sheet-up 0.28s ease-out;
-  }
-  .sheet-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .sheet-top .ctrl {
-    color: var(--text);
-  }
-  .sheet-art {
-    margin: 28px auto 32px;
-    width: min(100%, 52vh);
-    transition: transform 0.4s;
-  }
-  .sheet-art.playing {
-    transform: scale(1.02);
-  }
-  .sheet-art .cover {
-    border-radius: 8px;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
-  }
-  .sheet-art .cover--gen {
-    font-size: 96px;
-  }
-  .sheet-title {
-    font-size: 24px;
-    font-weight: 800;
-  }
-  .sheet-sub {
-    color: var(--muted);
-    margin: 4px 0 20px;
-  }
-  .sheet .progress span {
-    min-width: 0;
-  }
-  .sheet .progress {
-    flex-wrap: wrap;
-    justify-content: space-between;
-  }
-  .sheet .progress input {
-    flex: 0 0 100%;
-    order: -1;
-    margin-bottom: 6px;
-  }
-  .sheet .controls {
-    justify-content: space-between;
-    margin: 18px 12px 8px;
-  }
-  .sheet .ctrl svg {
-    width: 36px;
-    height: 36px;
-    color: var(--text);
-  }
-  .sheet .ctrl--main {
-    width: 68px;
-    height: 68px;
-  }
-  .sheet .ctrl--main svg {
-    width: 32px;
-    height: 32px;
-    color: #000;
-  }
-  .sheet .heard {
-    background: rgba(0, 0, 0, 0.25);
-  }
-}
-
-@keyframes sheet-up {
-  from {
-    transform: translateY(100%);
   }
 }
