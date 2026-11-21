@@ -149,7 +149,9 @@ const TALK_LABELS = { full: 'DJ + pubs', dj: 'DJ', music: 'Musique seulement', t
 function talkOf(st, videoId) {
   if (st.genre === 'Talk') return 'talk'
   if (st.game.startsWith('gta')) return 'full'
-  return GAME_TALK[st.game] ?? META[videoId]?.talk
+  const talk = GAME_TALK[st.game] ?? META[videoId]?.talk
+  // Forza Horizon stations have DJs but no ads.
+  return st.game.startsWith('fh') && talk === 'full' ? 'dj' : talk
 }
 
 const TalkBadge = ({ talk }) => talk && <span className={`badge badge--${talk}`}>{TALK_LABELS[talk]}</span>
