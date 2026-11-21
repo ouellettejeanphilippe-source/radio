@@ -37,7 +37,8 @@ const RADIO ='M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2
 
 function Cover({ station, className = '' }) {
   const [failed, setFailed] = useState(false)
-  const src = station.logo || (station.videoId && `https://i.ytimg.com/vi/${station.videoId}/hqdefault.jpg`)
+  // mqdefault is 16:9 without the letterbox bars that hqdefault has.
+  const src = station.logo || (station.videoId && `https://i.ytimg.com/vi/${station.videoId}/mqdefault.jpg`)
   if (src && !failed) {
     return <img className={`cover ${className}`} src={src} alt="" loading="lazy" onError={() => setFailed(true)} />
   }
@@ -84,6 +85,8 @@ export default function App() {
   const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
   const [loadedId, setLoadedId] = useState(null)
   const [lastVolume, setLastVolume] = useState(80)
+  const [dragX, setDragX] = useState(0)
+  const swipe = useRef(null)
   const hostRef = useRef(null)
   const yt = useYouTubePlayer(hostRef)
 
@@ -114,10 +117,12 @@ export default function App() {
     else playStation(current)
   }
 
+  // Like the in-game radio wheel: next/previous stays within the current game.
   function step(dir) {
-    if (!playable.length) return
-    const i = playable.findIndex((st) => st.id === currentId)
-    playStation(playable[(i + dir + playable.length) % playable.length])
+    const list = current ? playable.filter((st) => st.game === current.game) : playable
+    if (!list.length) return
+    const i = list.findIndex((st) => st.id === currentId)
+    playStation(list[(i + dir + list.length) % list.length])
   }
 
   const actions = useRef({})
@@ -185,7 +190,44 @@ export default function App() {
   )
 
   const gameLabel = (id) => GAMES.find((g) => g.id === id)?.name
-  const heading = game === 'all' ? 'Toutes les stations' : gameLabel(game)
+
+  function renderCard(st) {
+    const active = st.id === currentId
+    const heard = heardRatio(yt.heard[st.videoId])
+    return (
+      <button key={st.id} className={`card ${active ? 'active' : ''}`} onClick={() => playStation(st)}>
+        <div className="card-cover">
+          <Cover key={st.logo + st.videoId} station={st} />
+          {heard > 0 && <span className="card-heard" style={{ '--pct': `${heard * 100}%` }} />}
+          <span className="card-play">
+            <Icon d={active && loadedId === st.id && isPlaying ? PAUSE : PLAY} size={22} />
+          </span>
+        </div>
+        <div className="card-title">{st.name}</div>
+        <div className="card-sub">{st.dj || st.genre}</div>
+      </button>
+    )
+  }
+
+  // Swipe the mini player sideways to change station.
+  const swipeStart = (e) => {
+    const t = e.touches[0]
+    swipe.current = { x: t.clientX, y: t.clientY, active: false }
+  }
+  const swipeMove = (e) => {
+    const s = swipe.current
+    if (!s) return
+    const dx = e.touches[0].clientX - s.x
+    const dy = e.touches[0].clientY - s.y
+    if (!s.active && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) s.active = true
+    if (s.active) setDragX(dx)
+  }
+  const swipeEnd = () => {
+    const s = swipe.current
+    swipe.current = null
+    if (s?.active && Math.abs(dragX) > 70) step(dragX < 0 ? 1 : -1)
+    setDragX(0)
+  }
 
   return (
     <div className="app">
@@ -212,39 +254,23 @@ export default function App() {
             <span>Radio</span>
           </div>
           <input className="search" type="search" placeholder="Rechercher une station, un DJ, un genre…" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <nav className="chips">
-            {[{ id: 'all', name: 'Toutes' }, ...GAMES].map((g) => (
-              <button key={g.id} className={`chip ${game === g.id ? 'active' : ''}`} onClick={() => setGame(g.id)}>
-                {g.name}
-              </button>
-            ))}
-          </nav>
-          <h1>{heading}</h1>
+          {game !== 'all' && <h1>{gameLabel(game)}</h1>}
         </header>
-        <div className="grid">
-          {visible.map((st) => {
-            const active = st.id === currentId
+        {game === 'all' ? (
+          GAMES.map((g) => {
+            const list = visible.filter((st) => st.game === g.id)
+            if (!list.length) return null
             return (
-              <button key={st.id} className={`card ${active ? 'active' : ''}`} onClick={() => playStation(st)}>
-                <div className="card-cover">
-                  <Cover key={st.logo + st.videoId} station={st} />
-                  {heardRatio(yt.heard[st.videoId]) > 0 && (
-                    <span className="card-heard" style={{ '--pct': `${heardRatio(yt.heard[st.videoId]) * 100}%` }} />
-                  )}
-                  <span className="card-play">
-                    <Icon d={active && loadedId === st.id && isPlaying ? PAUSE : PLAY} size={22} />
-                  </span>
-                </div>
-                <div className="card-title">{st.name}</div>
-                <div className="card-sub">
-                  {game === 'all' && `${gameLabel(st.game)} · `}
-                  {st.dj || st.genre}
-                </div>
-              </button>
+              <section key={g.id} className="shelf">
+                <h2>{g.name}</h2>
+                <div className="row">{list.map(renderCard)}</div>
+              </section>
             )
-          })}
-          {!visible.length && <p className="empty">Aucune station trouvée.</p>}
-        </div>
+          })
+        ) : (
+          <div className="grid">{visible.map(renderCard)}</div>
+        )}
+        {!visible.length && <p className="empty">Aucune station trouvée.</p>}
       </main>
 
       <aside className="now panel">
@@ -276,8 +302,18 @@ export default function App() {
         )}
       </aside>
 
-      <footer className={`player ${current ? '' : 'player--empty'}`} style={{ '--accent': current?.color ?? '#535353' }}>
-        <div className="player-left">
+      <footer
+        className={`player ${current ? '' : 'player--empty'}`}
+        style={{ '--accent': current?.color ?? '#535353' }}
+        onTouchStart={swipeStart}
+        onTouchMove={swipeMove}
+        onTouchEnd={swipeEnd}
+        onTouchCancel={swipeEnd}
+      >
+        <div
+          className={`player-left ${dragX ? 'dragging' : ''}`}
+          style={{ transform: dragX ? `translateX(${dragX}px)` : undefined, opacity: dragX ? Math.max(0.3, 1 - Math.abs(dragX) / 250) : undefined }}
+        >
           {current && (
             <>
               <Cover key={current.id + current.videoId} station={current} className="cover--small" />
