@@ -9,7 +9,7 @@ Le repo ne contient **aucun contenu** : seulement l'interface et la liste des st
 - Toucher une station la fait jouer. Le mini-lecteur du bas ouvre le lecteur complet (vidéo, contrôles, roue des radios).
 - Glisser le mini-lecteur (ou le lecteur complet) à gauche/droite change de poste selon le mode : **même jeu**, **même époque** (époque où se passe le jeu) ou **aléatoire**.
 - La roue des radios montre les stations du jeu en cours, comme dans GTA.
-- Les bouts déjà entendus sont enregistrés par station ; chaque lancement repart près du début du plus long bout pas encore entendu.
+- Les bouts déjà entendus sont enregistrés par station ; si on revient sur une station moins de 2 min après l'avoir quittée, ça reprend au même endroit ; sinon ça tombe au hasard dans le plus long bout pas encore entendu, en laissant au moins 5 min de chaque côté (ou pile à son début). Les trous de moins d'une minute comptent comme entendus.
 - Un grichement de radio joue pendant le changement de poste.
 - **Mode auto** : écran avec logo géant et gros boutons, l'écran reste allumé ; glisser n'importe où change de poste, toucher le logo ouvre la roue. Marche aussi à l'horizontale.
 - Favoris (cœur) et « Récemment écoutées » en haut de l'accueil.
