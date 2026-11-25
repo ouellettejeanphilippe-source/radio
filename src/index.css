@@ -86,14 +86,14 @@ label {
 .display,
 .mobile-brand > h1,
 .shelf h2,
-.sheet-title,
+.dash-name,
 .wheel-name {
   font-family: var(--display);
   font-weight: 900;
   letter-spacing: 1px;
 }
 .mobile-brand > h1,
-.sheet-title,
+.dash-name,
 .wheel-name {
   -webkit-text-stroke: 1.5px #000;
   paint-order: stroke fill;
@@ -317,15 +317,6 @@ label {
   left: 6px;
   top: 6px;
 }
-.song {
-  margin-top: 8px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--dial);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .fav.on,
 .fav.on:hover:not(:disabled),
 .drive-fav.on {
@@ -524,6 +515,9 @@ label {
   padding: 13%;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
 }
+.cover--pixel img {
+  image-rendering: pixelated;
+}
 .cover--gen {
   display: grid;
   place-items: center;
@@ -581,7 +575,7 @@ label {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
   overflow: hidden;
   z-index: 5;
-  touch-action: pan-y;
+  touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -775,7 +769,9 @@ input[type='range']:disabled {
   margin-top: auto;
   padding-top: 16px;
 }
-.dial-band {
+/* The dash of the listening screen carries the same band, smaller and read-only (.band). */
+.dial-band,
+.band {
   position: relative;
   height: 40px;
   border-radius: 8px;
@@ -786,7 +782,38 @@ input[type='range']:disabled {
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 2%) 0 100% / 100% 7px no-repeat,
     var(--well);
 }
-.dial-band span {
+.band {
+  height: 24px;
+  border-radius: 6px;
+  background-size:
+    100% 9px,
+    100% 5px,
+    auto;
+}
+.band i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--needle);
+  box-shadow: 0 0 8px var(--needle);
+}
+/* Tuning in: the needle sweeps the band, like on the mini player. */
+.sheet.is-tuning .band i {
+  animation: band-sweep 1.1s ease-in-out infinite alternate;
+}
+@keyframes band-sweep {
+  from {
+    left: 2%;
+  }
+  to {
+    left: 98%;
+  }
+}
+.dial-band span,
+.band span {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -848,7 +875,7 @@ input[type='range']:disabled {
 /* The YouTube player: invisible (audio only) unless the full player is open.
    Not display:none, which can stop playback in some browsers. */
 .audio-host {
-  --vw: min(calc(100vw - 32px), 528px);
+  --vw: min(calc(100vw - 32px), calc((100vh - 220px) * 16 / 9), 528px);
   position: fixed;
   left: -10000px;
   top: 0;
@@ -875,43 +902,342 @@ input[type='range']:disabled {
   border-radius: 8px;
 }
 
-/* Full player */
+/* The listening screen: the station's sign out in the night, and the dash under it. */
 .sheet {
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 55%, var(--asphalt)) 0, var(--asphalt) 72%);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* The same ground as the home screen, lit from where the sign hangs. */
+  background:
+    radial-gradient(90% 56% at 50% 42%, color-mix(in srgb, var(--accent) 32%, transparent) 0, transparent 100%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 2px, transparent 2px 6px),
+    var(--asphalt);
   animation: sheet-up 0.28s ease-out;
   overflow: hidden;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 }
-.sheet-inner {
-  --vw: min(calc(100vw - 32px), 528px);
+.sheet-top {
+  height: 56px;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+.sheet > .sheet-top {
+  margin-top: env(safe-area-inset-top);
+  padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+}
+.sheet-top .ctrl {
+  color: var(--legend);
+}
+.sheet-top > .ctrl {
+  justify-self: start;
+}
+/* Dash legends: small, tracked capitals, like the lettering silk-screened next to a key. */
+.sheet-game,
+.lamp,
+.dash-legend,
+.wheel-hint {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.sheet-game {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--legend-2);
+  white-space: nowrap;
+}
+.sheet-top-actions {
+  justify-self: end;
+  display: flex;
+  gap: 16px;
+}
+/* On the air: the one red light on the dash. */
+.lamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--needle);
+}
+.lamp::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--needle);
+  box-shadow: 0 0 8px var(--needle);
+}
+.sheet-stage {
+  min-height: 0;
+  display: grid;
+  /* A row as tall as the stage, so the sign can be sized against it and never slides under the dash. */
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  padding: 4px 24px 20px;
+}
+.sheet-art {
+  height: min(100%, 76vw, 460px);
+  max-width: 100%;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  transition:
+    transform 0.25s,
+    opacity 0.25s;
+}
+.sheet-art.dragging {
+  transition: none;
+}
+.sheet-art:active:not(.dragging) {
+  transform: scale(0.98);
+}
+.sheet-art .cover {
+  height: 100%;
+  border-radius: 12px;
+  transition: transform 0.2s ease-out;
+}
+/* A logo hangs in the dark like a lit sign, with no tile behind it: its own colour is the halo. */
+.sheet-art .cover--logo {
+  background: none;
+  outline: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+.sheet-art .cover--logo img {
+  padding: 3%;
+  filter: drop-shadow(0 0 34px color-mix(in srgb, var(--c) 58%, transparent)) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
+}
+
+/* The dash: the band you tune on, what's on, and three keys. */
+.dash {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 12px;
+  padding: 4px max(20px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: color-mix(in srgb, var(--accent) 12%, var(--dash));
+  border-top: 1px solid var(--bezel-strong);
+}
+/* The band opens the details: the full dial, the running order and the video. */
+.dash-band {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 44px;
+  color: var(--legend-3);
+}
+.dash-band:hover {
+  color: var(--legend);
+}
+.dash-time {
+  min-width: 4ch;
+  color: var(--legend-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+.dash-now {
+  min-width: 0;
+}
+.dash-name {
+  font-size: clamp(26px, 8.8vw, 44px);
+  line-height: 1.05;
+  text-wrap: balance;
+}
+/* Equalizer bars before the name: they move while the station plays. */
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 0.5em;
+  margin-right: 0.28em;
+}
+.bars i {
+  width: 4px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--dial);
+  transform: scaleY(0.22);
+  transform-origin: bottom;
+}
+.is-playing .bars i {
+  animation: bars 0.82s ease-in-out infinite alternate;
+}
+.is-playing .bars i:nth-child(2) {
+  animation-duration: 0.61s;
+}
+.is-playing .bars i:nth-child(3) {
+  animation-duration: 0.97s;
+  animation-delay: -0.4s;
+}
+.is-playing .bars i:nth-child(4) {
+  animation-duration: 0.7s;
+  animation-delay: -0.2s;
+}
+@keyframes bars {
+  to {
+    transform: scaleY(1);
+  }
+}
+.dash-song,
+.dash-next {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-song {
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.dash-song.is-error {
+  color: var(--needle);
+}
+.dash-next {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--legend-3);
+}
+.dash-keys {
+  justify-content: center;
+  gap: 44px;
+}
+.dash-keys .ctrl {
+  color: var(--legend);
+}
+.dash-keys .ctrl svg {
+  width: 34px;
+  height: 34px;
+}
+.dash-keys .ctrl--main {
+  width: 68px;
+  height: 68px;
+}
+.dash-keys .ctrl--main svg {
+  width: 30px;
+  height: 30px;
+  color: var(--dial-ink);
+}
+.dash-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.dash-side .volume {
+  width: min(100%, 220px);
+  margin: 0;
+}
+/* How to get the wheel, said once where the thumb rests. It is a key too. */
+.hold-hint {
+  min-height: 32px;
+  padding: 0 8px;
+  color: var(--legend-3);
+  font-size: 12px;
+}
+.hold-hint:hover {
+  color: var(--legend);
+}
+.hold-hint--key,
+.hold-hint--known {
+  display: none;
+}
+.hold-hint kbd {
+  display: inline-block;
+  min-width: 22px;
+  margin: 0 2px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--key);
+  border: 1px solid var(--bezel-strong);
+  box-shadow: 0 1px 0 #000;
+  color: var(--legend);
+  font: inherit;
+  font-weight: 700;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* Computers: one row on the dash, under the band. */
+@media (min-width: 860px) and (min-height: 560px) {
+  .sheet-art {
+    height: min(100%, 460px);
+  }
+  .dash {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 32px;
+    padding-bottom: 18px;
+  }
+  .dash-band {
+    grid-column: 1 / -1;
+  }
+  .dash-side {
+    align-items: flex-end;
+  }
+}
+/* Phone on its side: the sign on the left, the dash on the right. */
+@media (orientation: landscape) and (max-height: 559px) {
+  .sheet {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .sheet > .sheet-top {
+    grid-column: 1 / -1;
+    height: 44px;
+  }
+  .sheet-stage {
+    padding-bottom: 20px;
+  }
+  .dash {
+    align-content: center;
+    gap: 6px;
+    border-top: 0;
+    border-left: 1px solid var(--bezel-strong);
+  }
+  .dash-name {
+    font-size: 30px;
+  }
+  .dash-keys .ctrl--main {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+/* The details, behind the band: the video, the running order, the full dial, the swipe mode. */
+.details {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 30%, var(--asphalt)) 0, var(--asphalt) 56%);
+  animation: sheet-up 0.28s ease-out;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.details-inner {
+  --vw: min(calc(100vw - 32px), calc((100vh - 220px) * 16 / 9), 528px);
   height: 100%;
   max-width: 560px;
   margin: 0 auto;
   padding: env(safe-area-inset-top) 16px calc(16px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-}
-.sheet-top {
-  height: 56px;
-  flex: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--legend-2);
-  font-size: 13px;
-  font-weight: 600;
-}
-.sheet-top .ctrl {
-  color: var(--legend);
-}
-.sheet-top-actions {
-  display: flex;
-  gap: 14px;
 }
 .video-slot {
   flex: none;
@@ -928,54 +1254,106 @@ input[type='range']:disabled {
   aspect-ratio: auto;
   border-radius: 0;
 }
-.sheet-title {
-  font-size: 40px;
-  line-height: 1.05;
-  margin-top: 22px;
-  text-wrap: balance;
-}
-.sheet-host {
-  margin-top: 6px;
-  color: var(--legend-2);
-  font-size: 15px;
-}
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 12px 0 18px;
+  margin: 12px 0 8px;
 }
-.controls--big {
-  justify-content: space-between;
-  margin: 18px 0 12px;
+/* The running order. The line that is playing sits on a key, with the needle on its edge. */
+.tracks {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  /* Lines scroll out under the chips and the dial instead of being cut. */
+  -webkit-mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent);
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: var(--key-lit) transparent;
 }
-.controls--big .ctrl {
+.track {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--legend-2);
+}
+.track-time {
+  color: var(--legend-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.track-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Ads, news and the DJ: part of the broadcast, but not what you look for in the list. */
+.track--talk .track-title {
+  color: var(--legend-3);
+}
+.track.now {
+  background: var(--key);
+  box-shadow: inset 2px 0 0 var(--needle);
   color: var(--legend);
+  font-weight: 600;
 }
-.controls--big .ctrl svg {
-  width: 34px;
-  height: 34px;
+.track.now .track-time,
+.track.now .track-title {
+  color: inherit;
 }
-.controls--big .ctrl--mode svg {
-  width: 24px;
-  height: 24px;
+.tracks-none {
+  flex: 1;
+  margin: 8px 0 0;
+  color: var(--legend-3);
+  font-size: 13px;
 }
-.controls--big .ctrl--main {
-  width: 66px;
-  height: 66px;
+.dash-legend {
+  margin-top: 16px;
+  color: var(--legend-3);
 }
-.controls--big .ctrl--main svg {
-  width: 30px;
-  height: 30px;
-  color: var(--dial-ink);
+.modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
 }
-@keyframes sheet-up {
-  from {
-    transform: translateY(100%);
-  }
+.mode-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--key);
+  border: 1px solid var(--bezel);
+  color: var(--legend-2);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 0.09s ease-out;
+}
+.mode-key:active {
+  transform: scale(0.96);
+}
+/* The chosen one is backlit, like the play key. */
+.mode-key[aria-pressed='true'] {
+  background: var(--key-lit);
+  border-color: color-mix(in srgb, var(--dial) 55%, transparent);
+  color: var(--dial);
 }
 
-/* GTA radio wheel */
+/* GTA radio wheel. wheel.js lays the logos out: a circle, or an oval when a game has many. */
 .wheel-backdrop {
   position: fixed;
   inset: 0;
@@ -986,26 +1364,21 @@ input[type='range']:disabled {
   backdrop-filter: blur(6px);
   animation: fade-in 0.18s ease-out;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .wheel {
-  --size: min(94vw, 86vh, 600px);
-  --r: calc(var(--size) * 0.39);
-  --item: min(calc(var(--size) * 0.17), calc(var(--size) * 2.15 / var(--n)));
   position: relative;
-  width: var(--size);
-  height: var(--size);
 }
 .wheel-ring {
   position: absolute;
-  inset: 4%;
+  inset: -6px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 0, 0, 0.2) 0 45%, rgba(0, 0, 0, 0.55) 46% 100%);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.2) 0 60%, rgba(0, 0, 0, 0.55) 61% 100%);
   border: 2px solid rgba(255, 255, 255, 0.08);
 }
 .wheel-item {
   position: absolute;
-  left: calc(50% + var(--x) * var(--r));
-  top: calc(50% + var(--y) * var(--r));
   width: var(--item);
   height: var(--item);
   transform: translate(-50%, -50%);
@@ -1029,24 +1402,47 @@ input[type='range']:disabled {
     0 0 0 3px var(--dial),
     0 0 18px color-mix(in srgb, var(--dial) 55%, transparent);
 }
+/* The logo a held finger (or the mouse, with Q down) points at: it comes forward, ringed in white. */
+.wheel-item.aimed {
+  z-index: 1;
+  transform: translate(-50%, -50%) scale(1.34);
+}
+.wheel-item.aimed .cover {
+  box-shadow:
+    0 0 0 3px var(--legend),
+    0 0 22px rgba(255, 255, 255, 0.4);
+}
 .wheel-center {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: calc(var(--r) * 1.15);
   transform: translate(-50%, -50%);
   text-align: center;
   pointer-events: none;
 }
+.wheel-game {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: auto;
+}
+.wheel-game .ctrl {
+  flex: none;
+  width: 36px;
+  height: 36px;
+}
 .wheel-title {
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--legend-2);
+  text-wrap: balance;
 }
 .wheel-name {
-  font-size: clamp(24px, calc(var(--size) * 0.07), 42px);
+  font-size: clamp(22px, 6.4vw, 40px);
   line-height: 1.05;
-  margin-top: 6px;
+  margin-top: 4px;
   text-wrap: balance;
 }
 .wheel-dj {
@@ -1054,15 +1450,13 @@ input[type='range']:disabled {
   font-size: 13px;
   color: var(--legend-2);
 }
+.wheel-hint {
+  margin-top: 12px;
+  color: var(--dial);
+}
 @keyframes fade-in {
   from {
     opacity: 0;
-  }
-}
-
-@media (max-width: 700px) {
-  .sheet-title {
-    font-size: 34px;
   }
 }
 
@@ -1099,6 +1493,14 @@ input[type='range']:disabled {
   }
   .dial-foot .btn-link {
     margin-block: -14px;
+  }
+  .hold-hint,
+  .track {
+    min-height: 44px;
+  }
+  .wheel-game .ctrl {
+    width: 44px;
+    height: 44px;
   }
   .scrobble-btn,
   .scrobble-panel input {
@@ -1151,6 +1553,25 @@ input[type='range']:disabled {
   }
   .player-mini-play:active {
     transform: scale(0.96);
+  }
+  .hold-hint--touch {
+    display: none;
+  }
+  .hold-hint--key {
+    display: inline;
+  }
+  .hold-hint--known {
+    display: block;
+  }
+  .mode-key:hover {
+    background: var(--key-lit);
+  }
+  .sheet-art:hover .cover {
+    transform: scale(1.02);
+  }
+  .track:hover:not(:disabled):not(.now) {
+    background: color-mix(in srgb, var(--key) 60%, transparent);
+    color: var(--legend);
   }
 }
 
@@ -1293,4 +1714,56 @@ input[type='range']:disabled {
   display: block;
   width: 100%;
   height: auto;
+}
+
+/* A switch on the dash: the knob lights amber when it's on. */
+.switch-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.switch-row .scrobble-help {
+  display: block;
+  margin: 4px 0 0;
+}
+.scrobble-panel input.switch {
+  flex: none;
+  appearance: none;
+  position: relative;
+  width: 48px;
+  height: 28px;
+  min-height: 0;
+  margin: 2px 0 0;
+  padding: 0;
+  border-radius: 14px;
+  background: var(--well);
+  border: 1px solid var(--bezel-strong);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--legend-3);
+  transition:
+    transform 0.15s,
+    background 0.15s;
+}
+.switch:checked {
+  background: color-mix(in srgb, var(--dial) 24%, var(--well));
+  border-color: var(--dial);
+}
+.switch:checked::after {
+  transform: translateX(20px);
+  background: var(--dial);
 }

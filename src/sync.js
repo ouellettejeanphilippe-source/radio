@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { mergeHeard } from './heard.js'
 
-// Keeps favourites, recents, mode, current station and listening history the same on every device,
+// Keeps favourites, recents, modes, current station and listening history the same on every device,
 // through a secret gist on the user's GitHub account (no server of our own).
 // Scrobbling logins and per-device things (volume, car mode) stay on each device.
 
 const SYNC_KEY = 'radio:sync' // { token, gistId, user, last }
 const STAMPS_KEY = 'radio:sync-stamps' // { [key]: time of the last local change }
-const KEYS = ['radio:current', 'radio:mode', 'radio:favs', 'radio:recent', 'radio:heard']
+const KEYS = ['radio:current', 'radio:mode', 'radio:live', 'radio:favs', 'radio:recent', 'radio:heard']
 const HEARD = 'radio:heard'
 const FILE = 'radio-sync.json'
 const API = 'https://api.github.com/'

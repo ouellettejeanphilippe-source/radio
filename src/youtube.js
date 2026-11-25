@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { addHeard, clearHeard, pickStart, readHeard } from './heard.js'
+import { addHeard, clearHeard, liveStart, pickStart, readHeard } from './heard.js'
 
 let apiPromise
 function loadApi() {
@@ -23,8 +23,12 @@ export function parseYouTubeId(value) {
   return /^[\w-]{11}$/.test(v) ? v : null
 }
 
-export function useYouTubePlayer(hostRef) {
+export function useYouTubePlayer(hostRef, live) {
   const playerRef = useRef(null)
+  const liveRef = useRef(live)
+  useEffect(() => {
+    liveRef.current = live
+  })
   const readyRef = useRef(false)
   const pendingRef = useRef(null)
   const videoIdRef = useRef(null)
@@ -67,7 +71,8 @@ export function useYouTubePlayer(hostRef) {
               if (needsStartRef.current) {
                 needsStartRef.current = false
                 const d = e.target.getDuration()
-                if (d > 120) {
+                if (d > 120 && liveRef.current) e.target.seekTo(liveStart(d), true)
+                else if (d > 120) {
                   const id = videoIdRef.current
                   const { start, reset } = pickStart(readHeard()[id], d)
                   if (reset) setHeard(clearHeard(id))
@@ -145,14 +150,28 @@ export function useYouTubePlayer(hostRef) {
     else pendingRef.current = videoId
   }, [])
 
+  // Live: jump to where the broadcast is now.
+  const goLive = useCallback(() => {
+    const p = playerRef.current
+    if (!readyRef.current || needsStartRef.current) return
+    const d = p.getDuration()
+    if (!(d > 120)) return
+    lastRef.current = null
+    p.seekTo(liveStart(d), true)
+  }, [])
+
   const toggle = useCallback(() => {
     const p = playerRef.current
     if (!readyRef.current) return
     const playing = p.getPlayerState() === window.YT.PlayerState.PLAYING
     userPausedRef.current = playing
     if (playing) p.pauseVideo()
-    else p.playVideo()
-  }, [])
+    else {
+      // The broadcast went on during the pause.
+      if (liveRef.current) goLive()
+      p.playVideo()
+    }
+  }, [goLive])
 
   const seek = useCallback((t) => {
     if (!readyRef.current) return
@@ -181,5 +200,5 @@ export function useYouTubePlayer(hostRef) {
     }
   }, [])
 
-  return { status, time, volume, heard, resetHeard, load, toggle, seek, setVolume }
+  return { status, time, volume, heard, resetHeard, load, toggle, seek, goLive, setVolume }
 }

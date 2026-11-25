@@ -57,7 +57,8 @@ function Sync() {
     return (
       <form onSubmit={enable}>
         <p className="scrobble-help">
-          Garde tes favoris, tes récents et ce que tu as déjà entendu pareils sur tous tes appareils, dans un gist secret de ton compte GitHub.
+          Garde tes favoris, tes récents, tes réglages d'écoute et ce que tu as déjà entendu pareils sur tous tes appareils, dans un gist secret de ton
+          compte GitHub.
         </p>
         <ol className="sync-steps">
           <li>
@@ -277,7 +278,7 @@ function Lastfm({ settings }) {
   )
 }
 
-export default function Settings({ count, total, lastStatus, onClose }) {
+export default function Settings({ count, total, live, onLive, lastStatus, onClose }) {
   const settings = useScrobbleSettings()
   return (
     <div className="wheel-backdrop" onClick={onClose}>
@@ -288,6 +289,18 @@ export default function Settings({ count, total, lastStatus, onClose }) {
             Fermer
           </button>
         </div>
+        <section>
+          <label className="switch-row">
+            <span>
+              <b>Écoute en direct</b>
+              <span className="scrobble-help">
+                Chaque poste suit l'horloge, comme une vraie radio&nbsp;: il continue pendant que tu écoutes ailleurs, et tout le monde entend le même
+                moment. Sinon, l'app reprend dans ce que tu n'as pas encore entendu.
+              </span>
+            </span>
+            <input type="checkbox" role="switch" className="switch" checked={live} onChange={(e) => onLive(e.target.checked)} />
+          </label>
+        </section>
         <section>
           <h3>Synchro entre appareils</h3>
           <Sync />

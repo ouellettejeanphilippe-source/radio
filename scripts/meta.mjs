@@ -1,6 +1,11 @@
 // Builds src/meta.json from the public YouTube watch pages: the tracklist (timestamps in the
 // description) and whether the title/description says the rip has DJ talk and ads or music only.
 // Usage: node scripts/meta.mjs
+//
+// Many uploaders leave the timestamps out of the description; they are often in a comment under
+// the video instead. Paste such a list as it is into scripts/tracklists/<videoId>.txt (one
+// "12:34 Artist - Title" per line, same formats as below) and run the script again: it wins over
+// the description, and needs no network.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,6 +13,7 @@ import { STATIONS } from '../src/stations.js'
 import { parseYouTubeId } from '../src/youtube.js'
 
 const OUT = new URL('../src/meta.json', import.meta.url)
+const LISTS = new URL('./tracklists/', import.meta.url)
 
 const toSec = (t) => t.split(':').reduce((acc, n) => acc * 60 + Number(n), 0)
 
@@ -65,27 +71,39 @@ const CACHE = join(tmpdir(), 'radio-yt-details.json')
 const cache = existsSync(CACHE) ? JSON.parse(readFileSync(CACHE, 'utf8')) : {}
 const djs = Object.fromEntries(STATIONS.map((st) => [parseYouTubeId(st.youtube), st.dj]))
 const ids = Object.keys(djs).filter((id) => id !== 'null')
+// Three failures in a row mean YouTube is turning this machine away for now: no point insisting.
+let failures = 0
 for (const id of ids.filter((id) => !cache[id])) {
   try {
     cache[id] = await fetchDetails(id)
     writeFileSync(CACHE, JSON.stringify(cache))
+    failures = 0
   } catch (e) {
     console.log(id, 'ERROR', e.message)
-    if (e.message.includes('429')) break
+    if (e.message.includes('429') || ++failures >= 3) break
   }
   await new Promise((r) => setTimeout(r, 1500))
 }
 
+// A video that couldn't be fetched this time keeps what the last run found, so a run without
+// network (or one YouTube turns away) never empties the file.
+const previous = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : {}
 const meta = {}
 for (const id of ids) {
-  if (!cache[id]) continue
+  const list = new URL(`${id}.txt`, LISTS)
+  const pasted = existsSync(list) ? parseTracks(readFileSync(list, 'utf8')) : []
+  if (!cache[id]) {
+    const kept = { ...previous[id], ...(pasted.length && { tracks: pasted }) }
+    if (kept.talk || kept.tracks) meta[id] = kept
+    continue
+  }
   const { title, desc } = cache[id]
-  const tracks = parseTracks(desc)
+  const tracks = pasted.length ? pasted : parseTracks(desc)
   const talk = detectTalk(`${title}\n${desc}`, djs[id])
   if (talk || tracks.length) meta[id] = { ...(talk && { talk }), ...(tracks.length && { tracks }) }
-  console.log(id, String(tracks.length).padStart(3), talk ?? '-', title.slice(0, 70))
+  console.log(id, String(tracks.length).padStart(3), talk ?? '-', pasted.length ? '(pasted list)' : '', title.slice(0, 70))
 }
 const missing = ids.filter((id) => !cache[id]).length
-if (missing) console.log(`${missing} videos not fetched yet; run again later`)
+if (missing) console.log(`${missing} videos not fetched this time: their previous data is kept; run again later`)
 writeFileSync(OUT, JSON.stringify(meta) + '\n')
 console.log(`${Object.keys(meta).length}/${ids.length} with data, ${Object.values(meta).filter((x) => x.tracks).length} tracklists`)
