@@ -37,7 +37,7 @@ button:disabled {
 
 /* GTA-style display type: Pricedown with a hard black outline. */
 .display,
-.mobile-brand > span,
+.mobile-brand > h1,
 .shelf h2,
 .sheet-title,
 .wheel-name {
@@ -82,7 +82,8 @@ button:disabled {
   margin-bottom: 12px;
   color: var(--green);
 }
-.mobile-brand > span {
+.mobile-brand > h1 {
+  margin: 0;
   font-size: 34px;
   color: var(--text);
 }
@@ -96,6 +97,9 @@ button:disabled {
   font: inherit;
   font-size: 16px;
   outline: none;
+}
+.search:focus-visible {
+  border-color: var(--green);
 }
 .shelf-head {
   display: flex;
@@ -243,15 +247,16 @@ button:disabled {
   margin-left: auto;
   padding: 7px 12px;
   border-radius: 20px;
-  background: #1f1f1f;
+  background: rgba(255, 255, 255, 0.12);
   color: var(--text);
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 .drive-open:hover {
-  background: #2a2a2a;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Car mode */
@@ -635,7 +640,7 @@ input[type='range'] {
   margin: 0;
 }
 input[type='range']:hover:not(:disabled) {
-  background: linear-gradient(90deg, var(--green) var(--pct, 0%), #4d4d4d var(--pct, 0%));
+  background-image: linear-gradient(90deg, var(--green) var(--pct, 0%), #4d4d4d var(--pct, 0%));
 }
 input[type='range']::-webkit-slider-thumb {
   appearance: none;
@@ -881,6 +886,65 @@ input[type='range']:disabled {
 @media (max-width: 700px) {
   .sheet-title {
     font-size: 34px;
+  }
+}
+
+/* Narrow phones: the car button keeps its icon only, so the header stays on one line. */
+@media (max-width: 359px) {
+  .drive-open--icon + .drive-open span {
+    display: none;
+  }
+}
+
+/* Fingers: every control answers on at least 44px. Icon buttons and the header pills get a larger
+   hit area around them, so nothing moves; the settings panel has room and grows instead. */
+@media (pointer: coarse) {
+  .ctrl,
+  .drive-open {
+    position: relative;
+  }
+  .ctrl::after,
+  .drive-open::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  .btn-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .heard-head .btn-link {
+    margin-block: -14px;
+  }
+  .scrobble-btn,
+  .scrobble-panel input {
+    min-height: 44px;
+  }
+  /* The seek bar: same 4px line, 28px to grab, and a thumb that shows without hover. */
+  .sheet .progress input {
+    height: 28px;
+    margin: -12px 0 -6px;
+    background-size: 100% 4px;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .sheet .progress input::-webkit-slider-thumb {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .drive,
+  .wheel-backdrop {
+    animation: none;
   }
 }
 

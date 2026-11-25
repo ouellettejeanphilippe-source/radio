@@ -57,7 +57,7 @@ function Sync() {
           <li>Copie le jeton et colle-le ici :</li>
         </ol>
         <div className="scrobble-field">
-          <input type="password" placeholder="ghp_…" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
+          <input type="password" aria-label="Jeton GitHub" placeholder="ghp_…" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
           <button className="scrobble-btn" disabled={!token.trim() || working}>
             {working ? '…' : 'Activer'}
           </button>
@@ -152,7 +152,7 @@ function ListenBrainz({ settings }) {
         puis colle-le ici.
       </p>
       <div className="scrobble-field">
-        <input type="password" placeholder="Jeton ListenBrainz" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
+        <input type="password" aria-label="Jeton ListenBrainz" placeholder="Jeton ListenBrainz" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
         <button className="scrobble-btn" disabled={!token.trim() || busy}>
           {busy ? '…' : 'Connecter'}
         </button>
@@ -200,8 +200,8 @@ function Lastfm({ settings }) {
             </a>{' '}
             (le nom et la description importent peu, laisse l'URL de rappel vide), puis copie la clé et le secret ici.
           </p>
-          <input placeholder="Clé API" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
-          <input type="password" placeholder="Secret partagé" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="off" />
+          <input aria-label="Clé API Last.fm" placeholder="Clé API" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
+          <input type="password" aria-label="Secret partagé Last.fm" placeholder="Secret partagé" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="off" />
           <button className="scrobble-btn">Enregistrer</button>
         </form>
       ) : (

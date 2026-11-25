@@ -55,6 +55,8 @@ export function useYouTubePlayer(hostRef) {
         events: {
           onReady: (e) => {
             readyRef.current = true
+            // Nothing in the embed can be operated (controls: 0), so Tab skips it.
+            e.target.getIframe().tabIndex = -1
             e.target.setVolume(volumeRef.current)
             if (pendingRef.current) e.target.loadVideoById(pendingRef.current)
             pendingRef.current = null

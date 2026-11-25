@@ -576,7 +576,7 @@ export default function App() {
         <header className="main-header">
           <div className="mobile-brand">
             <Icon d={RADIO} size={24} />
-            <span>Radio</span>
+            <h1>Radio</h1>
             <button
               className={`drive-open drive-open--icon ${scrobblingOn(scrobbleSettings) || sync ? 'on' : ''}`}
               onClick={() => setSettingsOpen(true)}
@@ -585,12 +585,19 @@ export default function App() {
             >
               <Icon d={GEAR} />
             </button>
-            <button className="drive-open" onClick={() => setDrive(true)}>
+            <button className="drive-open" onClick={() => setDrive(true)} aria-label="Mode auto">
               <Icon d={CAR} />
               <span>Mode auto</span>
             </button>
           </div>
-          <input className="search" type="search" placeholder="Rechercher une station, un DJ, un genre…" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input
+            className="search"
+            type="search"
+            aria-label="Rechercher une station, un DJ ou un genre"
+            placeholder="Station, DJ ou genre…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </header>
         {!q && favs.length > 0 && <Shelf title="Tes favoris">{byIds(favs).map(renderCard)}</Shelf>}
         {!q && recent.length > 0 && <Shelf title="Récemment écoutées">{byIds(recent).map(renderCard)}</Shelf>}
