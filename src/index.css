@@ -515,6 +515,9 @@ label {
   padding: 13%;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
 }
+.cover--pixel img {
+  image-rendering: pixelated;
+}
 .cover--gen {
   display: grid;
   place-items: center;

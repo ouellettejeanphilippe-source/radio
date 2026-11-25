@@ -74,13 +74,24 @@ const thumb = (st) => `https://i.ytimg.com/vi/${st.videoId}/mqdefault.jpg`
 function Cover({ station, className = '' }) {
   const sources = [station.logo, thumb(station)].filter(Boolean)
   const [index, setIndex] = useState(0)
+  // Tiny in-game textures (GTA 2's logos are 64 px wide) are shown as the pixel art they are.
+  const [tiny, setTiny] = useState(false)
   const src = sources[index]
   const isLogo = src && src === station.logo
   if (src) {
     return (
-      <div className={`cover ${isLogo ? 'cover--logo' : 'cover--thumb'} ${className}`} style={{ '--c': station.color }}>
+      <div className={`cover ${isLogo ? 'cover--logo' : 'cover--thumb'} ${isLogo && tiny ? 'cover--pixel' : ''} ${className}`} style={{ '--c': station.color }}>
         {/* Fandom's image host refuses requests that carry a foreign Referer. */}
-        <img src={src} alt="" loading="lazy" decoding="async" draggable={false} referrerPolicy="no-referrer" onError={() => setIndex(index + 1)} />
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          referrerPolicy="no-referrer"
+          onLoad={(e) => setTiny(e.target.naturalWidth > 0 && e.target.naturalWidth < 140)}
+          onError={() => setIndex(index + 1)}
+        />
       </div>
     )
   }
@@ -170,6 +181,10 @@ function RadioWheel({ ref, title, stations, currentId, hold, onPick, onGame, onC
       if (id) navigator.vibrate?.(4)
     },
     aimed: () => stations.find((st) => st.id === aimed.current) ?? null,
+    forget() {
+      aimed.current = null
+      setPointed(null)
+    },
   }))
   // A logo pointed at in another game's wheel doesn't count in this one.
   const shown = stations.find((st) => st.id === pointed) ?? stations.find((st) => st.id === currentId)
@@ -216,11 +231,14 @@ function RadioWheel({ ref, title, stations, currentId, hold, onPick, onGame, onC
 
 // What the recording holds besides music. Known per game where the rips are consistent,
 // otherwise what the uploader says (see scripts/meta.mjs).
-const GAME_TALK = { mafia2: 'full', mafia3: 'full', fans: 'full', fo3: 'dj', fonv: 'dj', fo4: 'dj', sdogs: 'music', scarface: 'music', wd2: 'music', wdl: 'music' }
+const GAME_TALK = { mafia2: 'full', mafia3: 'full', fans: 'full', fo3: 'dj', fonv: 'dj', fo4: 'dj', sdogs: 'music', scarface: 'music', wd2: 'music', wdl: 'music', gtacw: 'music' }
+// GTA rips are whole broadcasts, except these: Chinatown Wars has no DJ (above), and for the first
+// games and GTA VI it depends on the upload, so the uploader's word is taken.
+const GTA_VARIES = ['gtacw', 'gta1', 'gtalondon', 'gta6']
 const TALK_LABELS = { full: 'DJ + pubs', dj: 'DJ', music: 'Musique seulement', talk: 'Talk-show' }
 function talkOf(st, videoId) {
   if (st.genre === 'Talk') return 'talk'
-  if (st.game.startsWith('gta')) return 'full'
+  if (st.game.startsWith('gta') && !GTA_VARIES.includes(st.game)) return 'full'
   const talk = GAME_TALK[st.game] ?? META[videoId]?.talk
   // Forza Horizon stations have DJs but no ads.
   return st.game.startsWith('fh') && talk === 'full' ? 'dj' : talk
@@ -311,9 +329,15 @@ function useSwipe({ onMove, onEnd, hold }) {
   const ref = useRef(null)
   return {
     onTouchStart: (e) => {
-      clearTimeout(ref.current?.timer)
+      const before = ref.current
+      clearTimeout(before?.timer)
       // A drag on the seek bar moves the playback and the tracklist scrolls: neither is a swipe.
-      if (e.touches.length > 1 || e.target.closest('input, .tracks')) return (ref.current = null)
+      // A second finger calls everything off.
+      if (e.touches.length > 1 || e.target.closest('input, .tracks')) {
+        ref.current = null
+        if (before?.held) hold.cancel()
+        return
+      }
       const t = e.touches[0]
       const s = { x: t.clientX, y: t.clientY, axis: null, dx: 0, dy: 0, held: false }
       if (hold && !e.target.closest(NO_HOLD)) {
@@ -630,7 +654,7 @@ export default function App() {
     h.moved = true
     wheelRef.current?.aim(x, y)
   }
-  // Released on a logo: tune in. Released without having moved (when `stay`): the wheel stays
+  // Released on a logo: tune in. A finger released without having moved (`stay`): the wheel stays
   // open, to be tapped. Otherwise it closes and nothing changes.
   function holdEnd(stay) {
     const h = holding.current
@@ -648,6 +672,14 @@ export default function App() {
     else setWheel(null)
   }
   const hold = { start: holdStart, move: holdMove, end: () => holdEnd(true), cancel: () => holdEnd(false) }
+  // A quick press of Q isn't a hold: the wheel just stays open, to be clicked, and nothing the
+  // mouse happened to cross on the way gets tuned.
+  function holdToTap() {
+    if (!holding.current) return
+    holding.current = null
+    wheelRef.current?.forget()
+    setWheel((w) => w && { ...w, hold: false })
+  }
 
   function closeSettings() {
     setSettingsOpen(false)
@@ -663,15 +695,16 @@ export default function App() {
 
   const actions = useRef({})
   useEffect(() => {
-    actions.current = { togglePlay, step, closeTop, closeWheel, turnWheel, holdStart, holdMove, holdEnd, wheel, loaded: () => loadedId != null }
+    actions.current = { togglePlay, step, closeTop, closeWheel, turnWheel, holdStart, holdMove, holdEnd, holdToTap, wheel, loaded: () => loadedId != null }
   })
 
   useEffect(() => {
     let pressedAt = 0
     const onMouse = (e) => actions.current.holdMove(e.clientX, e.clientY)
-    const release = (stay) => {
+    const release = (quick) => {
       window.removeEventListener('mousemove', onMouse)
-      actions.current.holdEnd(stay)
+      if (quick) actions.current.holdToTap()
+      else actions.current.holdEnd(false)
     }
     const onKey = (e) => {
       if (e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return
@@ -694,7 +727,6 @@ export default function App() {
         setSearching(true)
       } else if (e.code === 'Escape') a.closeTop()
     }
-    // A quick press of Q leaves the wheel open, to be clicked.
     const onKeyUp = (e) => (e.key === 'q' || e.key === 'Q') && release(Date.now() - pressedAt < 300)
     const onBlur = () => release(false)
     window.addEventListener('keydown', onKey)
