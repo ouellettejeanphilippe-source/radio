@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import qrcode from 'qrcode-generator'
 import {
   connectListenBrainz,
@@ -10,6 +10,11 @@ import {
   useScrobbleSettings,
 } from './scrobble.js'
 import { deviceLink, disableSync, enableSync, syncNow, TOKEN_URL, useSync } from './sync.js'
+import ConfirmButton from './Confirm.jsx'
+
+const OFFLINE = 'Vérifie ton réseau et réessaie.'
+// Tokens and keys are pasted, never typed: no autocorrect, capitals or spellcheck on them.
+const PASTED = { autoComplete: 'off', autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false }
 
 function Qr({ text }) {
   const qr = qrcode(0, 'L')
@@ -18,7 +23,7 @@ function Qr({ text }) {
   return <div className="sync-qr" dangerouslySetInnerHTML={{ __html: qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }) }} />
 }
 
-const timeLabel = (t) => (t ? new Date(t).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' }) : '—')
+const timeLabel = (t) => new Date(t).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })
 
 function Sync() {
   const { sync, busy, error } = useSync()
@@ -27,17 +32,24 @@ function Sync() {
   const [setupError, setSetupError] = useState(null)
   const [showLink, setShowLink] = useState(false)
   const [copied, setCopied] = useState(false)
+  const field = useRef(null)
 
   if (!sync) {
     async function enable(e) {
       e.preventDefault()
+      if (!token.trim()) {
+        setSetupError("Colle d'abord ton jeton GitHub dans le champ.")
+        field.current.focus()
+        return
+      }
       setWorking(true)
       setSetupError(null)
       try {
         await enableSync(token)
         setToken('')
       } catch (err) {
-        setSetupError(err instanceof TypeError ? 'Pas de connexion à GitHub.' : err.message)
+        setSetupError(err instanceof TypeError ? `Pas de connexion à GitHub. ${OFFLINE}` : err.message)
+        field.current?.focus()
       } finally {
         setWorking(false)
       }
@@ -52,18 +64,31 @@ function Sync() {
             <a href={TOKEN_URL} target="_blank" rel="noreferrer">
               Ouvre cette page GitHub
             </a>
-            , choisis « No expiration », puis clique « Generate token » en bas.
+            , choisis «&nbsp;No expiration&nbsp;», puis clique «&nbsp;Generate token&nbsp;» en bas.
           </li>
-          <li>Copie le jeton et colle-le ici :</li>
+          <li>Copie le jeton et colle-le ici&nbsp;:</li>
         </ol>
         <div className="scrobble-field">
-          <input type="password" placeholder="ghp_…" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
-          <button className="scrobble-btn" disabled={!token.trim() || working}>
+          <input
+            ref={field}
+            type="password"
+            name="github-token"
+            aria-label="Jeton GitHub"
+            placeholder="ghp_…"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            {...PASTED}
+          />
+          <button className="scrobble-btn" disabled={working}>
             {working ? '…' : 'Activer'}
           </button>
         </div>
+        {setupError && (
+          <p className="error" role="alert">
+            {setupError}
+          </p>
+        )}
         <p className="scrobble-help">Sur tes autres appareils, tu n'auras qu'à ouvrir un lien.</p>
-        {setupError && <p className="error">{setupError}</p>}
       </form>
     )
   }
@@ -72,17 +97,21 @@ function Sync() {
   return (
     <>
       <div className="scrobble-row">
-        <span>
-          Activée{sync.user && <> ({sync.user})</>} · {busy ? 'synchro…' : `dernière synchro ${timeLabel(sync.last)}`}
+        <span role="status">
+          Activée{sync.user && <> ({sync.user})</>} · {busy ? 'synchro…' : sync.last ? `dernière synchro ${timeLabel(sync.last)}` : 'pas encore de synchro'}
         </span>
         <button className="btn-link" onClick={syncNow} disabled={busy}>
           Synchroniser
         </button>
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
       {link ? (
         <div className="sync-link">
-          <p className="scrobble-help">Scanne ce code avec l'autre appareil, ou envoie-toi le lien. Il contient ton jeton : garde-le pour toi.</p>
+          <p className="scrobble-help">Scanne ce code avec l'autre appareil, ou envoie-toi le lien. Il contient ton jeton&nbsp;: garde-le pour toi.</p>
           <Qr text={link} />
           <button
             className="scrobble-btn scrobble-btn--wide"
@@ -106,9 +135,7 @@ function Sync() {
           Ajouter un autre appareil
         </button>
       )}
-      <button className="btn-link" onClick={disableSync}>
-        Désactiver sur cet appareil
-      </button>
+      <ConfirmButton onConfirm={disableSync}>Désactiver sur cet appareil</ConfirmButton>
     </>
   )
 }
@@ -117,27 +144,32 @@ function ListenBrainz({ settings }) {
   const [token, setToken] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const field = useRef(null)
   if (settings.lbToken) {
     return (
       <div className="scrobble-row">
         <span>
-          Connecté : <b>{settings.lbUser}</b>
+          Connecté&nbsp;: <b>{settings.lbUser}</b>
         </span>
-        <button className="btn-link" onClick={disconnectListenBrainz}>
-          Déconnecter
-        </button>
+        <ConfirmButton onConfirm={disconnectListenBrainz}>Déconnecter</ConfirmButton>
       </div>
     )
   }
   async function connect(e) {
     e.preventDefault()
+    if (!token.trim()) {
+      setError("Colle d'abord ton jeton ListenBrainz dans le champ.")
+      field.current.focus()
+      return
+    }
     setBusy(true)
     setError(null)
     try {
       await connectListenBrainz(token)
       setToken('')
     } catch (err) {
-      setError(err instanceof TypeError ? 'Pas de connexion à ListenBrainz.' : err.message)
+      setError(err instanceof TypeError ? `Pas de connexion à ListenBrainz. ${OFFLINE}` : err.message)
+      field.current?.focus()
     } finally {
       setBusy(false)
     }
@@ -152,12 +184,25 @@ function ListenBrainz({ settings }) {
         puis colle-le ici.
       </p>
       <div className="scrobble-field">
-        <input type="password" placeholder="Jeton ListenBrainz" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
-        <button className="scrobble-btn" disabled={!token.trim() || busy}>
+        <input
+          ref={field}
+          type="password"
+          name="listenbrainz-token"
+          aria-label="Jeton ListenBrainz"
+          placeholder="Jeton ListenBrainz…"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          {...PASTED}
+        />
+        <button className="scrobble-btn" disabled={busy}>
           {busy ? '…' : 'Connecter'}
         </button>
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
     </form>
   )
 }
@@ -168,21 +213,32 @@ function Lastfm({ settings }) {
   const [showKeys, setShowKeys] = useState(!hasKeys)
   const [key, setKey] = useState(settings.lfmKey ?? '')
   const [secret, setSecret] = useState(settings.lfmSecret ?? '')
+  const [missing, setMissing] = useState(false)
+  const keyField = useRef(null)
+  function connect() {
+    if (hasKeys) return startLastfmLogin()
+    setMissing(true)
+    setShowKeys(true)
+    keyField.current?.focus()
+  }
   return (
     <>
       {settings.lfmSession ? (
         <div className="scrobble-row">
           <span>
-            Connecté : <b>{settings.lfmUser}</b>
+            Connecté&nbsp;: <b>{settings.lfmUser}</b>
           </span>
-          <button className="btn-link" onClick={disconnectLastfm}>
-            Déconnecter
-          </button>
+          <ConfirmButton onConfirm={disconnectLastfm}>Déconnecter</ConfirmButton>
         </div>
       ) : (
-        <button className="scrobble-btn scrobble-btn--wide" onClick={startLastfmLogin} disabled={!hasKeys}>
+        <button className="scrobble-btn scrobble-btn--wide" onClick={connect}>
           Connecter Last.fm
         </button>
+      )}
+      {missing && !hasKeys && (
+        <p className="error" role="alert">
+          Enregistre d'abord la clé et le secret ci-dessous.
+        </p>
       )}
       {showKeys ? (
         <form
@@ -200,9 +256,15 @@ function Lastfm({ settings }) {
             </a>{' '}
             (le nom et la description importent peu, laisse l'URL de rappel vide), puis copie la clé et le secret ici.
           </p>
-          <input placeholder="Clé API" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
-          <input type="password" placeholder="Secret partagé" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="off" />
-          <button className="scrobble-btn">Enregistrer</button>
+          <label>
+            Clé API
+            <input ref={keyField} name="lastfm-key" value={key} onChange={(e) => setKey(e.target.value)} {...PASTED} />
+          </label>
+          <label>
+            Secret partagé
+            <input type="password" name="lastfm-secret" value={secret} onChange={(e) => setSecret(e.target.value)} {...PASTED} />
+          </label>
+          <button className="scrobble-btn">Enregistrer la clé</button>
         </form>
       ) : (
         !settings.lfmSession && (
@@ -219,7 +281,7 @@ export default function Settings({ count, total, lastStatus, onClose }) {
   const settings = useScrobbleSettings()
   return (
     <div className="wheel-backdrop" onClick={onClose}>
-      <div className="scrobble-panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Réglages">
+      <div className="scrobble-panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Réglages">
         <div className="scrobble-head">
           <h2>Réglages</h2>
           <button className="btn-link" onClick={onClose}>
@@ -243,10 +305,14 @@ export default function Settings({ count, total, lastStatus, onClose }) {
           <h3>Last.fm</h3>
           <Lastfm settings={settings} />
         </section>
-        {lastStatus?.state === 'error' && <p className="error">{lastStatus.error}</p>}
+        {lastStatus?.state === 'error' && (
+          <p className="error" role="alert">
+            {lastStatus.error}
+          </p>
+        )}
         {lastStatus?.state === 'done' && (
           <p className="scrobble-help">
-            Dernière envoyée : {lastStatus.song.artist} – {lastStatus.song.track}
+            Dernière envoyée&nbsp;: {lastStatus.song.artist} - {lastStatus.song.track}
           </p>
         )}
       </div>

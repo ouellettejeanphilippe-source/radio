@@ -89,9 +89,9 @@ async function gh(path, token, init = {}) {
       ...(init.body && { 'Content-Type': 'application/json' }),
     },
   })
-  if (res.status === 401) throw Object.assign(new Error('Jeton GitHub refusé (expiré ou supprimé ?).'), { auth: true })
-  if (res.status === 404) throw Object.assign(new Error('Gist de synchro introuvable.'), { missing: true })
-  if (!res.ok) throw new Error(`GitHub : erreur ${res.status}`)
+  if (res.status === 401) throw Object.assign(new Error('Jeton GitHub refusé (expiré ou supprimé\u00a0?). Crée-en un nouveau, puis réactive la synchro avec.'), { auth: true })
+  if (res.status === 404) throw Object.assign(new Error('Gist de synchro introuvable. Désactive la synchro puis réactive-la pour le recréer.'), { missing: true })
+  if (!res.ok) throw new Error(`GitHub\u00a0: erreur ${res.status}`)
   return res.json()
 }
 
@@ -168,7 +168,7 @@ export function syncNow() {
       saveSync({ ...sync, last: Date.now() })
       setStatus({ error: null })
     } catch (e) {
-      setStatus({ error: e instanceof TypeError ? 'Pas de connexion à GitHub.' : e.message })
+      setStatus({ error: e instanceof TypeError ? 'Pas de connexion à GitHub. Vérifie ton réseau et réessaie.' : e.message })
     } finally {
       setStatus({ busy: false })
       running = null

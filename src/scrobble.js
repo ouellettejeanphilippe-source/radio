@@ -100,14 +100,14 @@ async function lbFetch(path, token, body) {
     body: body && JSON.stringify(body),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw Object.assign(new Error(data.error || `ListenBrainz : erreur ${res.status}`), { retry: res.status >= 500 || res.status === 429 })
+  if (!res.ok) throw Object.assign(new Error(data.error || `ListenBrainz\u00a0: erreur ${res.status}`), { retry: res.status >= 500 || res.status === 429 })
   return data
 }
 
 export async function connectListenBrainz(token) {
   const t = token.trim()
   const data = await lbFetch('validate-token', t)
-  if (!data.valid) throw new Error('Jeton ListenBrainz invalide.')
+  if (!data.valid) throw new Error('Jeton ListenBrainz invalide. Recopie-le depuis listenbrainz.org/settings.')
   update({ lbToken: t, lbUser: data.user_name })
   return data.user_name
 }
@@ -143,7 +143,7 @@ async function lfmCall(params, { key, secret }) {
   if (data.error || !res.ok) {
     // 11/16: service temporarily unavailable; 29: rate limit.
     const retry = res.status >= 500 || [11, 16, 29].includes(data.error)
-    throw Object.assign(new Error(`Last.fm : ${data.message || `erreur ${res.status}`}`), { retry, code: data.error })
+    throw Object.assign(new Error(`Last.fm\u00a0: ${data.message || `erreur ${res.status}`}`), { retry, code: data.error })
   }
   return data
 }
