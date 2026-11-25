@@ -1793,6 +1793,9 @@ input[type='range']:disabled {
   display: block;
   margin: 4px 0 0;
 }
+.switch-row + .switch-row {
+  margin-top: 16px;
+}
 .scrobble-panel input.switch {
   flex: none;
   appearance: none;

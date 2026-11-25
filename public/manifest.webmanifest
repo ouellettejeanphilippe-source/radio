@@ -9,6 +9,16 @@
   "orientation": "any",
   "background_color": "#0b0c0e",
   "theme_color": "#0b0c0e",
+  "categories": ["music", "entertainment"],
+  "shortcuts": [
+    {
+      "name": "Mode auto",
+      "short_name": "Auto",
+      "description": "Logo géant et gros boutons, pour la voiture",
+      "url": "./?auto",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
