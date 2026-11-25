@@ -353,7 +353,7 @@ export default function App() {
     localStorage.setItem(DRIVE_KEY, JSON.stringify(drive))
   }, [drive])
 
-  // The static stops as soon as the new station is actually playing (or failed).
+  // The static stops once the new station is playing (or has failed).
   useEffect(() => {
     if (yt.status !== 'buffering') {
       stopStatic.current?.()
@@ -465,7 +465,7 @@ export default function App() {
       if (keys.includes(FAVS_KEY)) setFavs(readJson(FAVS_KEY, []))
       if (keys.includes(RECENT_KEY)) setRecent(readJson(RECENT_KEY, []))
       if (keys.includes(MODE_KEY)) setMode(readJson(MODE_KEY, 'game'))
-      // Never switch stations under the listener: only when nothing is playing here yet.
+      // Take the synced station only while nothing is playing here, so it doesn't change under the listener.
       if (keys.includes(CURRENT_KEY) && !actions.current.loaded()) setCurrentId(readJson(CURRENT_KEY, null))
     }
     window.addEventListener('radio:synced', onSynced)
@@ -544,7 +544,7 @@ export default function App() {
     </>
   )
 
-  // Like in the games, the wheel always shows the current game's stations.
+  // Like in the games, the wheel shows the current game's stations, whatever the mode.
   const wheelStations = current ? stations.filter((st) => st.game === current.game) : []
   const wheelTitle = current ? gameLabel(current.game) : ''
 

@@ -29,7 +29,7 @@ export function startStatic(volume) {
     const level = 0.22 * (volume / 100)
     gain.gain.setValueAtTime(0, ctx.currentTime)
     gain.gain.linearRampToValueAtTime(level, ctx.currentTime + 0.05)
-    // Never longer than a few seconds, even if the station never starts.
+    // Fades out after 4 s even if the station hasn't started.
     gain.gain.setValueAtTime(level, ctx.currentTime + 4)
     gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 4.6)
     src.connect(band).connect(gain).connect(ctx.destination)

@@ -5,7 +5,7 @@ const MIN_GAP = 60
 // Unheard stretches shorter than this are counted as heard, so the history doesn't end up
 // full of little holes that would later be played as tiny fragments.
 const HOLE = 60
-// Back on a station within this delay: carry on exactly where it was left.
+// Back on a station within this delay: carry on where it was left.
 const RESUME_WITHIN = 2 * 60_000
 // Otherwise the jump into an unheard stretch leaves pieces at least this long on both sides.
 const MIN_BLOCK = 5 * 60

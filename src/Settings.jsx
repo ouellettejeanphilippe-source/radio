@@ -18,7 +18,7 @@ function Qr({ text }) {
   return <div className="sync-qr" dangerouslySetInnerHTML={{ __html: qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }) }} />
 }
 
-const timeLabel = (t) => (t ? new Date(t).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' }) : '—')
+const timeLabel = (t) => new Date(t).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })
 
 function Sync() {
   const { sync, busy, error } = useSync()
@@ -73,7 +73,7 @@ function Sync() {
     <>
       <div className="scrobble-row">
         <span>
-          Activée{sync.user && <> ({sync.user})</>} · {busy ? 'synchro…' : `dernière synchro ${timeLabel(sync.last)}`}
+          Activée{sync.user && <> ({sync.user})</>} · {busy ? 'synchro…' : sync.last ? `dernière synchro ${timeLabel(sync.last)}` : 'pas encore de synchro'}
         </span>
         <button className="btn-link" onClick={syncNow} disabled={busy}>
           Synchroniser
@@ -246,7 +246,7 @@ export default function Settings({ count, total, lastStatus, onClose }) {
         {lastStatus?.state === 'error' && <p className="error">{lastStatus.error}</p>}
         {lastStatus?.state === 'done' && (
           <p className="scrobble-help">
-            Dernière envoyée : {lastStatus.song.artist} – {lastStatus.song.track}
+            Dernière envoyée : {lastStatus.song.artist} - {lastStatus.song.track}
           </p>
         )}
       </div>
