@@ -49,6 +49,7 @@ const SHUFFLE = 'M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04
 const GAMEPAD = 'M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'
 const CALENDAR = 'M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14v11zM7 11h5v5H7z'
 const CAR = 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM5 11l1.5-4.5h11L19 11H5z'
+const SEARCH = 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'
 const CLOSE = 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'
 const HEART = 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
 const HEART_OUTLINE = 'M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z'
@@ -93,18 +94,34 @@ function Cover({ station, className = '' }) {
 
 const PERCENT = new Intl.NumberFormat('fr-CA', { style: 'percent' })
 
-function HeardMap({ rec, position, onReset }) {
+// The dial: one band shows where you are (the needle, which you can drag) and which parts of the
+// recording you've already heard (lit).
+function Dial({ rec, time, enabled, onSeek, onReset }) {
   const ratio = heardRatio(rec)
+  const current = enabled ? time.current : 0
   return (
-    <div className="heard">
-      <div className="heard-head">
-        <span>Tu as entendu {PERCENT.format(ratio)} de cette station</span>
-        {ratio > 0 && <ConfirmButton onConfirm={onReset}>Recommencer</ConfirmButton>}
-      </div>
-      <div className="heard-bar">
+    <div className="dial">
+      <div className="dial-band">
         {rec?.d > 0 &&
           rec.iv.map(([a, b]) => <span key={a} style={{ left: `${(a / rec.d) * 100}%`, width: `${((b - a) / rec.d) * 100}%` }} />)}
-        {rec?.d > 0 && position != null && <i style={{ left: `${(position / rec.d) * 100}%` }} />}
+        <input
+          type="range"
+          min="0"
+          max={Math.max(1, Math.floor(time.duration))}
+          value={Math.floor(current)}
+          disabled={!enabled}
+          onChange={(e) => onSeek(Number(e.target.value))}
+          aria-label="Position dans l'enregistrement"
+          aria-valuetext={fmt(current)}
+        />
+      </div>
+      <div className="dial-foot">
+        <span>{fmt(current)}</span>
+        <span className="dial-heard">
+          {PERCENT.format(ratio)} entendu
+          {ratio > 0 && <ConfirmButton onConfirm={onReset}>Recommencer</ConfirmButton>}
+        </span>
+        <span>{fmt(enabled ? time.duration : 0)}</span>
       </div>
     </div>
   )
@@ -296,13 +313,16 @@ const LEFT = 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z'
 const RIGHT = 'M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z'
 
 // A titled horizontal row of stations; arrows scroll it with a mouse.
-function Shelf({ title, children }) {
+function Shelf({ title, count, children }) {
   const rowRef = useRef(null)
   const scroll = (dir) => rowRef.current.scrollBy({ left: dir * rowRef.current.clientWidth * 0.8, behavior: 'smooth' })
   return (
     <section className="shelf">
       <div className="shelf-head">
         <h2>{title}</h2>
+        <span className="shelf-count">
+          {count} poste{count > 1 ? 's' : ''}
+        </span>
         <span className="shelf-arrows">
           <button className="ctrl" onClick={() => scroll(-1)} aria-label="Défiler à gauche">
             <Icon d={LEFT} size={26} />
@@ -321,6 +341,7 @@ function Shelf({ title, children }) {
 
 export default function App() {
   const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(false)
   const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
   const [loadedId, setLoadedId] = useState(null)
   const [mode, setMode] = useState(() => readJson(MODE_KEY, 'game'))
@@ -419,6 +440,11 @@ export default function App() {
     playStation(list[(i + dir + list.length) % list.length])
   }
 
+  function closeSearch() {
+    setQuery('')
+    setSearching(false)
+  }
+
   function cycleMode() {
     const i = MODES.findIndex((m) => m.id === mode)
     setMode(MODES[(i + 1) % MODES.length].id)
@@ -435,6 +461,9 @@ export default function App() {
       if (e.code === 'Space' && !e.target.closest('button')) {
         e.preventDefault()
         actions.current.togglePlay()
+      } else if (e.key === '/') {
+        e.preventDefault()
+        setSearching(true)
       } else if (e.code === 'Escape') {
         setWheelOpen(false)
         setExpanded(false)
@@ -547,23 +576,6 @@ export default function App() {
 
   const playIcon = isCurrentLoaded && isPlaying ? PAUSE : PLAY
   const pct = isCurrentLoaded && yt.time.duration ? (yt.time.current / yt.time.duration) * 100 : 0
-  const progress = (
-    <div className="progress">
-      <span>{fmt(isCurrentLoaded ? yt.time.current : 0)}</span>
-      <input
-        type="range"
-        min="0"
-        max={Math.max(1, Math.floor(yt.time.duration))}
-        value={isCurrentLoaded ? Math.floor(yt.time.current) : 0}
-        disabled={!isCurrentLoaded}
-        onChange={(e) => yt.seek(Number(e.target.value))}
-        aria-label="Position dans l'enregistrement"
-        aria-valuetext={fmt(isCurrentLoaded ? yt.time.current : 0)}
-        style={{ '--pct': `${pct}%` }}
-      />
-      <span>{fmt(isCurrentLoaded ? yt.time.duration : 0)}</span>
-    </div>
-  )
   const modeButton = (
     <button className="ctrl ctrl--mode" title={`Changer de poste\u00a0: ${modeInfo.label}`} onClick={cycleMode}>
       <Icon d={modeInfo.icon} />
@@ -620,44 +632,69 @@ export default function App() {
 
       <main className="main" style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer}>
         <header className="main-header">
-          <div className="mobile-brand">
-            <Icon d={RADIO} size={24} />
-            <h1>Radio</h1>
-            <button
-              className={`drive-open drive-open--icon ${scrobblingOn(scrobbleSettings) || sync ? 'on' : ''}`}
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Réglages"
-              title="Réglages&nbsp;: synchro entre appareils, scrobbling"
-            >
-              <Icon d={GEAR} />
-            </button>
-            <button className="drive-open" onClick={() => setDrive(true)} aria-label="Mode auto">
-              <Icon d={CAR} />
-              <span>Mode auto</span>
-            </button>
-          </div>
-          <input
-            className="search"
-            type="search"
-            name="q"
-            aria-label="Rechercher une station, un DJ, un genre ou un jeu"
-            placeholder="Station, DJ, genre ou jeu…"
-            autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            enterKeyHint="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+          {searching ? (
+            <div className="search-bar">
+              <label className="search-field">
+                <Icon d={SEARCH} />
+                <input
+                  className="search"
+                  type="search"
+                  name="q"
+                  aria-label="Rechercher une station, un DJ, un genre ou un jeu"
+                  placeholder="Station, DJ, genre ou jeu…"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="search"
+                  // Opened by a tap on the search key: typing can start at once.
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
+                />
+              </label>
+              <button className="drive-open drive-open--icon" onClick={closeSearch} aria-label="Fermer la recherche">
+                <Icon d={CLOSE} />
+              </button>
+            </div>
+          ) : (
+            <div className="mobile-brand">
+              <Icon d={RADIO} size={24} />
+              <h1>Radio</h1>
+              <button className="drive-open drive-open--icon" onClick={() => setSearching(true)} aria-label="Rechercher" title="Rechercher (/)">
+                <Icon d={SEARCH} />
+              </button>
+              <button
+                className={`drive-open drive-open--icon ${scrobblingOn(scrobbleSettings) || sync ? 'on' : ''}`}
+                onClick={() => setSettingsOpen(true)}
+                aria-label="Réglages"
+                title="Réglages&nbsp;: synchro entre appareils, scrobbling"
+              >
+                <Icon d={GEAR} />
+              </button>
+              <button className="drive-open" onClick={() => setDrive(true)} aria-label="Mode auto">
+                <Icon d={CAR} />
+                <span>Mode auto</span>
+              </button>
+            </div>
+          )}
         </header>
-        {!q && favs.length > 0 && <Shelf title="Tes favoris">{byIds(favs).map(renderCard)}</Shelf>}
-        {!q && recent.length > 0 && <Shelf title="Récemment écoutées">{byIds(recent).map(renderCard)}</Shelf>}
+        {!q && favs.length > 0 && (
+          <Shelf title="Tes favoris" count={byIds(favs).length}>
+            {byIds(favs).map(renderCard)}
+          </Shelf>
+        )}
+        {!q && recent.length > 0 && (
+          <Shelf title="Récemment écoutées" count={byIds(recent).length}>
+            {byIds(recent).map(renderCard)}
+          </Shelf>
+        )}
         {GAMES.map((g) => {
           const list = visible.filter((st) => st.game === g.id)
           if (!list.length) return null
           return (
-            <Shelf key={g.id} title={g.name}>
+            <Shelf key={g.id} title={g.name} count={list.length}>
               {list.map(renderCard)}
             </Shelf>
           )
@@ -665,14 +702,14 @@ export default function App() {
         {!visible.length && (
           <p className="empty">
             Aucune station trouvée.{' '}
-            <button className="btn-link" onClick={() => setQuery('')}>
+            <button className="btn-link" onClick={closeSearch}>
               Effacer la recherche
             </button>
           </p>
         )}
       </main>
 
-      <footer className={`player ${current ? '' : 'player--empty'}`} style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer} {...miniSwipe}>
+      <footer className={`player ${current ? '' : 'player--empty'} ${isCurrentLoaded && yt.status === 'buffering' ? 'is-tuning' : ''}`} style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer} {...miniSwipe}>
         <button
           className={`player-left ${dragX ? 'dragging' : ''}`}
           onClick={() => current && setExpanded(true)}
@@ -704,7 +741,9 @@ export default function App() {
         <button className="player-step" onClick={() => step(1)} aria-label="Station suivante">
           <Icon d={NEXT} size={22} />
         </button>
-        <span className="player-line" style={{ '--pct': `${pct}%` }} />
+        <span className="player-dial" style={{ '--pct': `${pct}%` }}>
+          <i />
+        </span>
       </footer>
 
       {expanded && current && (
@@ -734,8 +773,11 @@ export default function App() {
             {/* The real YouTube iframe is positioned over this slot (see .audio-host--video). */}
             <div className="video-slot">{!isCurrentLoaded && <Cover key={current.id} station={current} />}</div>
             <div className="sheet-title">{current.name}</div>
-            <div className="sheet-sub">
-              {[current.dj, current.genre, eraLabel(current.era)].filter(Boolean).join(' · ')} <TalkBadge talk={current.talk} />
+            {current.dj && <div className="sheet-host">{current.dj}</div>}
+            <div className="chips">
+              <span className="badge">{current.genre}</span>
+              <span className="badge">{eraLabel(current.era)}</span>
+              <TalkBadge talk={current.talk} />
             </div>
             {song && (
               <div className="song">
@@ -747,7 +789,13 @@ export default function App() {
                 )}
               </div>
             )}
-            {progress}
+            <Dial
+              rec={yt.heard[current.videoId]}
+              time={yt.time}
+              enabled={isCurrentLoaded}
+              onSeek={yt.seek}
+              onReset={() => yt.resetHeard(current.videoId)}
+            />
             <div className="controls controls--big">
               {modeButton}
               {transport}
@@ -779,7 +827,6 @@ export default function App() {
                 style={{ '--pct': `${yt.volume}%` }}
               />
             </div>
-            <HeardMap rec={yt.heard[current.videoId]} position={isCurrentLoaded ? yt.time.current : null} onReset={() => yt.resetHeard(current.videoId)} />
             {failed && (
               <p className="error" role="alert">
                 Cette station ne joue pas en ce moment. Essaie-en une autre.
