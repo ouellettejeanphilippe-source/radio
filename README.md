@@ -6,19 +6,21 @@ Le repo contient l'interface et la liste des stations, sans audio ni logos de je
 
 ## Fonctionnement
 
-- Toucher une station la fait jouer. Le mini-lecteur du bas ouvre le lecteur complet (vidéo, contrôles, roue des radios).
-- Glisser le mini-lecteur (ou le lecteur complet) à gauche ou à droite change de poste selon le mode : « Même jeu », « Même époque » (l'époque où se passe le jeu) ou « Aléatoire ».
-- La roue des radios montre les stations du jeu en cours, comme dans GTA.
+- Toucher une station la fait jouer. Le mini-lecteur du bas ouvre l'écran d'écoute : le logo du poste en grand, et dessous le tableau de bord (cadran, poste, chanson en cours et la suivante, trois touches).
+- La roue des radios montre les stations d'un jeu, comme dans GTA. Garder le doigt appuyé sur le lecteur (mini-lecteur, écran d'écoute ou mode auto) l'ouvre : on glisse vers un logo et on relâche pour syntoniser. Au clavier, c'est la touche Q qu'on garde enfoncée, en visant avec la souris. Un simple toucher sur le logo (ou un coup bref sur Q) l'ouvre aussi, pour choisir en touchant. Les flèches au centre (ou ← →) passent d'un jeu à l'autre. Quand un jeu a beaucoup de postes, la roue s'étire en ovale pour que les logos restent assez gros (`src/wheel.js`).
+- Toucher le cadran de l'écran d'écoute (ou glisser vers le haut) montre les détails : la vidéo, la liste des chansons avec celle qui joue (un toucher y saute), le cadran complet et le mode de glissement.
+- Glisser le mini-lecteur (ou l'écran d'écoute) à gauche ou à droite change de poste selon le mode : « Même jeu », « Même époque » (l'époque où se passe le jeu) ou « Aléatoire ».
 - L'app retient les bouts déjà entendus de chaque station. Si on revient sur une station moins de 2 min après l'avoir quittée, ça reprend au même endroit. Sinon ça tombe au hasard dans le plus long bout pas encore entendu, en laissant au moins 5 min de chaque côté (ou pile à son début). Les trous de moins d'une minute comptent comme entendus.
+- « Écoute en direct » (dans « Réglages », désactivée au départ) remplace cette reprise : chaque poste suit l'horloge, donc il a avancé quand on y revient et tout le monde entend le même moment. On ne peut alors plus déplacer l'aiguille.
 - Un grichement de radio joue pendant le changement de poste.
 - Le mode auto affiche un logo géant et de gros boutons, et garde l'écran allumé. Glisser n'importe où change de poste, toucher le logo ouvre la roue. Ça marche aussi à l'horizontale.
 - Favoris (cœur) et « Récemment écoutées » en haut de l'accueil.
-- Chaque station indique ce qu'il y a dans l'enregistrement : DJ + pubs, DJ, musique seulement ou talk-show. Quand la description YouTube a la liste des chansons avec les minutages, l'app affiche la chanson en cours (aussi sur l'écran verrouillé). Ces infos viennent de `src/meta.json`, généré par `node scripts/meta.mjs`.
+- Chaque station indique ce qu'il y a dans l'enregistrement : DJ + pubs, DJ, musique seulement ou talk-show. Quand on a la liste des chansons avec les minutages, l'app affiche la chanson en cours (aussi sur l'écran verrouillé), la suivante et la liste complète. Ces infos viennent de `src/meta.json`, généré par `node scripts/meta.mjs` à partir des descriptions YouTube. Quand la description n'a pas de minutages (c'est le cas de la plupart des GTA), on peut coller une liste minutée, souvent trouvée dans un commentaire sous la vidéo, dans `scripts/tracklists/<id de la vidéo>.txt`.
 - Si le navigateur met la lecture en pause en passant en arrière-plan, l'app la relance (utile en auto avec le GPS ouvert ; activer la lecture en arrière-plan dans Vivaldi/Brave ou utiliser Firefox).
 
 ## Synchro entre appareils
 
-La synchro s'active dans « Réglages » (roue dentée en haut de l'accueil). L'app garde alors les favoris, les récents, le mode, la station en cours et les bouts déjà entendus dans un gist secret du compte GitHub de l'utilisateur (`src/sync.js`), sans serveur.
+La synchro s'active dans « Réglages » (roue dentée en haut de l'accueil). L'app garde alors les favoris, les récents, le mode de glissement, l'écoute en direct, la station en cours et les bouts déjà entendus dans un gist secret du compte GitHub de l'utilisateur (`src/sync.js`), sans serveur.
 
 - Premier appareil : un lien ouvre la création d'un jeton GitHub avec seulement la permission `gist` ; on choisit « No expiration », on colle le jeton, et l'app trouve ou crée le gist.
 - Autres appareils : « Ajouter un autre appareil » montre un code QR / lien (`#sync=…`, qui contient le jeton) ; l'ouvrir suffit.

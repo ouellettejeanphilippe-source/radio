@@ -88,6 +88,10 @@ export function heardRatio(rec) {
   return Math.min(1, rec.iv.reduce((sum, [a, b]) => sum + (b - a), 0) / rec.d)
 }
 
+// Live mode: the station follows the clock, so everybody hears the same moment and it has moved on
+// when you come back, like a broadcast.
+export const liveStart = (d) => (Date.now() / 1000) % d
+
 // Where to start a station. Left less than 2 minutes ago: same spot. Otherwise tune in somewhere in
 // the longest unheard stretch (the mix loops, so the timeline is circular), either at its start or
 // far enough inside that neither the skipped part nor the rest is a tiny fragment.
