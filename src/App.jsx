@@ -9,6 +9,7 @@ import { countScrobblable, finishLastfmLogin, parseSong, scrobblingOn, useScrobb
 import Settings from './Settings.jsx'
 import GameBand from './GameBand.jsx'
 import { holdSession, mediaKey, sessionByDefault, tile } from './session.js'
+import { newerBuild, reloadFor } from './update.js'
 import ConfirmButton from './Confirm.jsx'
 import { startSync, useSync } from './sync.js'
 
@@ -529,6 +530,8 @@ export default function App() {
   const [skipSongs, setSkipSongs] = useState(() => readJson(SKIP_SONGS_KEY, false))
   // The current station's tile, drawn for the lock screen: { id, url }.
   const [art, setArt] = useState(null)
+  // A newer version is on the server, and couldn't be taken without interrupting something.
+  const [updateReady, setUpdateReady] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [scrobbleError, setScrobbleError] = useState(null)
   // Whether a held finger has already tuned a station on this device: the hint can then go.
@@ -765,7 +768,24 @@ export default function App() {
 
   const actions = useRef({})
   useEffect(() => {
-    actions.current = { togglePlay, setPlaying, skip, nudge, seekTo, closeTop, closeWheel, turnWheel, holdStart, holdMove, holdEnd, holdToTap, wheel, loaded: () => loadedId != null }
+    actions.current = {
+      togglePlay,
+      setPlaying,
+      skip,
+      nudge,
+      seekTo,
+      closeTop,
+      closeWheel,
+      turnWheel,
+      holdStart,
+      holdMove,
+      holdEnd,
+      holdToTap,
+      wheel,
+      loaded: () => loadedId != null,
+      // In the middle of something a reload would undo.
+      busy: () => loadedId != null || settingsOpen || searching || Boolean(wheel),
+    }
   })
 
   useEffect(() => {
@@ -863,6 +883,26 @@ export default function App() {
     playing: yt.status === 'playing',
     time: yt.time,
   })
+
+  // A newer version on the server: taken at once when coming back to an app that is doing nothing,
+  // otherwise announced in the settings, where it can be taken with one touch.
+  useEffect(() => {
+    let gone = false
+    const check = async () => {
+      if (document.visibilityState !== 'visible') return
+      const build = await newerBuild()
+      if (!build || gone) return
+      if (actions.current.busy() || !reloadFor(build)) setUpdateReady(true)
+    }
+    check()
+    document.addEventListener('visibilitychange', check)
+    const every = setInterval(check, 15 * 60_000)
+    return () => {
+      gone = true
+      document.removeEventListener('visibilitychange', check)
+      clearInterval(every)
+    }
+  }, [])
 
   // Back from Last.fm's login page with ?token=: finish connecting.
   useEffect(() => {
@@ -1074,7 +1114,7 @@ export default function App() {
                 <Icon d={SEARCH} />
               </button>
               <button
-                className={`drive-open drive-open--icon ${scrobblingOn(scrobbleSettings) || sync ? 'on' : ''}`}
+                className={`drive-open drive-open--icon ${scrobblingOn(scrobbleSettings) || sync || updateReady ? 'on' : ''}`}
                 onClick={() => setSettingsOpen(true)}
                 aria-label="Réglages"
                 title="Réglages&nbsp;: écoute en direct, synchro entre appareils, scrobbling"
@@ -1316,6 +1356,7 @@ export default function App() {
           onControls={setControls}
           skipSongs={skipSongs}
           onSkipSongs={setSkipSongs}
+          updateReady={updateReady}
           lastStatus={scrobbleError ? { state: 'error', error: scrobbleError } : lastScrobble}
           onClose={closeSettings}
         />

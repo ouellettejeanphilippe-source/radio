@@ -10,6 +10,8 @@ import {
   useScrobbleSettings,
 } from './scrobble.js'
 import { deviceLink, disableSync, enableSync, syncNow, TOKEN_URL, useSync } from './sync.js'
+import { sessionStatus } from './session.js'
+import { BUILT } from './update.js'
 import ConfirmButton from './Confirm.jsx'
 
 const OFFLINE = 'Vérifie ton réseau et réessaie.'
@@ -24,6 +26,14 @@ function Qr({ text }) {
 }
 
 const timeLabel = (t) => new Date(t).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })
+const dayLabel = (t) => new Date(t).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long' })
+
+// What the silent track behind the phone's controls is doing right now (see session.js).
+const SILENT = {
+  idle: "La piste de silence n'a pas encore démarré : lance un poste.",
+  playing: 'La piste de silence joue : les commandes devraient être à nous.',
+  paused: "La piste de silence est arrêtée, comme le poste.",
+}
 
 function Sync() {
   const { sync, busy, error } = useSync()
@@ -278,8 +288,9 @@ function Lastfm({ settings }) {
   )
 }
 
-export default function Settings({ count, total, live, onLive, controls, onControls, skipSongs, onSkipSongs, lastStatus, onClose }) {
+export default function Settings({ count, total, live, onLive, controls, onControls, skipSongs, onSkipSongs, updateReady, lastStatus, onClose }) {
   const settings = useScrobbleSettings()
+  const silent = sessionStatus()
   return (
     <div className="wheel-backdrop" onClick={onClose}>
       <div className="scrobble-panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Réglages">
@@ -312,6 +323,16 @@ export default function Settings({ count, total, live, onLive, controls, onContr
             </span>
             <input type="checkbox" role="switch" className="switch" checked={controls} onChange={(e) => onControls(e.target.checked)} />
           </label>
+          {controls &&
+            (silent.state === 'refused' ? (
+              <p className="error" role="alert">
+                Le navigateur a refusé la piste de silence ({silent.why})&nbsp;: les commandes du téléphone restent à YouTube.
+              </p>
+            ) : (
+              <p className="scrobble-help" role="status">
+                {SILENT[silent.state]}
+              </p>
+            ))}
           <label className="switch-row">
             <span>
               <b>Précédent et suivant changent de chanson</b>
@@ -350,6 +371,18 @@ export default function Settings({ count, total, live, onLive, controls, onContr
             Dernière envoyée&nbsp;: {lastStatus.song.artist} - {lastStatus.song.track}
           </p>
         )}
+        <section className="version">
+          {BUILT && (
+            <span>
+              Version du {dayLabel(BUILT)} à {timeLabel(BUILT)}
+            </span>
+          )}
+          {updateReady && (
+            <button className="scrobble-btn" onClick={() => window.location.reload()}>
+              Passer à la nouvelle version
+            </button>
+          )}
+        </section>
       </div>
     </div>
   )

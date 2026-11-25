@@ -26,7 +26,7 @@ L'app donne à Android le poste, la chanson en cours, le logo et la position dan
 
 - Précédent et suivant changent de poste, selon le mode de glissement. Le réglage « Précédent et suivant changent de chanson » les fait passer d'une chanson à l'autre sur les postes dont on a la liste; précédent revient alors au début de la chanson, ou à celle d'avant si elle vient de commencer.
 - Recul et avance déplacent de 30 s, et la barre de la notification déplace l'aiguille. En écoute en direct, ni l'un ni l'autre n'est offert.
-- Le son vient du lecteur YouTube, dans son propre cadre, et c'est normalement à lui qu'Android confie les commandes : on verrait le titre de la vidéo, sans pouvoir changer de poste. Pour les garder, l'app joue une piste de silence à côté (`src/session.js`). Ça se désactive dans « Réglages » (« Commandes du téléphone ») si le son coupe; c'est désactivé au départ sur iPhone, où ça n'a pas été essayé.
+- Le son vient du lecteur YouTube, dans son propre cadre, et c'est normalement à lui qu'Android confie les commandes : on verrait le titre de la vidéo, sans pouvoir changer de poste. Pour les garder, l'app joue une piste de silence à côté (`src/session.js`). Ça se désactive dans « Réglages » (« Commandes du téléphone ») si le son coupe, et la même section dit si la piste joue ou si le navigateur l'a refusée; c'est désactivé au départ sur iPhone, où ça n'a pas été essayé.
 - Le logo est redessiné en PNG sur la tuile du poste, parce que la notification n'affiche pas les SVG du wiki.
 - Installée depuis le navigateur, l'app a un raccourci « Mode auto » (appui long sur son icône).
 - La lecture en arrière-plan dépend encore du navigateur, comme indiqué plus haut.
@@ -52,6 +52,10 @@ Dans « Réglages », on peut envoyer les chansons écoutées à ListenBrainz et
 ## Stations
 
 Tout est dans `src/stations.js` : jeu, nom, DJ, genre, couleur, vidéo YouTube et logo.
+
+## Mises à jour
+
+L'app vérifie s'il y a une version plus récente quand on y revient, puis aux 15 minutes (`src/update.js`). Si rien ne joue, elle se recharge toute seule; sinon la roue dentée s'allume et « Réglages » offre « Passer à la nouvelle version ». Le bas des réglages indique la version qui roule. Sans ça, une app installée garde son ancien code tant qu'elle reste ouverte, et GitHub Pages laisse la page en cache dix minutes.
 
 ## Développement
 
