@@ -6,6 +6,7 @@ import { startStatic } from './static.js'
 import META from './meta.json'
 import { countScrobblable, finishLastfmLogin, scrobblingOn, useScrobbler, useScrobbleSettings } from './scrobble.js'
 import Settings from './Settings.jsx'
+import ConfirmButton from './Confirm.jsx'
 import { startSync, useSync } from './sync.js'
 
 const CURRENT_KEY = 'radio:current'
@@ -72,7 +73,7 @@ function Cover({ station, className = '' }) {
     return (
       <div className={`cover ${isLogo ? 'cover--logo' : 'cover--thumb'} ${className}`} style={{ '--c': station.color }}>
         {/* Fandom's image host refuses requests that carry a foreign Referer. */}
-        <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setIndex(index + 1)} />
+        <img src={src} alt="" loading="lazy" decoding="async" draggable={false} referrerPolicy="no-referrer" onError={() => setIndex(index + 1)} />
       </div>
     )
   }
@@ -90,17 +91,15 @@ function Cover({ station, className = '' }) {
   )
 }
 
+const PERCENT = new Intl.NumberFormat('fr-CA', { style: 'percent' })
+
 function HeardMap({ rec, position, onReset }) {
   const ratio = heardRatio(rec)
   return (
     <div className="heard">
       <div className="heard-head">
-        <span>Tu as entendu {Math.round(ratio * 100)} % de cette station</span>
-        {ratio > 0 && (
-          <button className="btn-link" onClick={onReset}>
-            Recommencer
-          </button>
-        )}
+        <span>Tu as entendu {PERCENT.format(ratio)} de cette station</span>
+        {ratio > 0 && <ConfirmButton onConfirm={onReset}>Recommencer</ConfirmButton>}
       </div>
       <div className="heard-bar">
         {rec?.d > 0 &&
@@ -171,11 +170,14 @@ function trackAt(tracks, t) {
   return found
 }
 
+const gameLabel = (id) => GAMES.find((g) => g.id === id)?.name
+// Lower case and no accents, so "electro" finds "Électro".
+const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 const STATIONS_PLAYABLE = STATIONS.map((st) => {
   const videoId = parseYouTubeId(st.youtube)
-  return { ...st, videoId, talk: talkOf(st, videoId), tracks: META[videoId]?.tracks }
+  const search = fold(`${st.name} ${st.dj} ${st.genre} ${gameLabel(st.game)}`)
+  return { ...st, videoId, talk: talkOf(st, videoId), tracks: META[videoId]?.tracks, search }
 }).filter((st) => st.videoId)
-const gameLabel = (id) => GAMES.find((g) => g.id === id)?.name
 const eraLabel = (id) => ERAS.find((e) => e.id === id)?.name
 
 // Tracks a touch and reports whether it became a horizontal or vertical drag.
@@ -183,6 +185,8 @@ function useSwipe({ onMove, onEnd }) {
   const ref = useRef(null)
   return {
     onTouchStart: (e) => {
+      // A drag on the seek bar moves the playback, it isn't a swipe to the next station.
+      if (e.target.closest('input')) return
       const t = e.touches[0]
       ref.current = { x: t.clientX, y: t.clientY, axis: null, dx: 0, dy: 0 }
     },
@@ -230,7 +234,7 @@ function useWakeLock() {
 }
 
 // Car screen: giant logo and buttons, swipe anywhere to change station, tap the logo for the wheel.
-function DriveMode({ station, song, playIcon, modeButton, fav, onFav, onToggle, onStep, onWheel, onClose }) {
+function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, onFav, onToggle, onStep, onWheel, onClose }) {
   const [dragX, setDragX] = useState(0)
   useWakeLock()
   const swipe = useSwipe({
@@ -241,7 +245,7 @@ function DriveMode({ station, song, playIcon, modeButton, fav, onFav, onToggle, 
     },
   })
   return (
-    <div className="drive" style={{ '--accent': station?.color ?? '#535353' }} {...swipe}>
+    <div className="drive" style={{ '--accent': station?.color ?? '#535353' }} inert={covered} {...swipe}>
       <div className="drive-top">
         <button className="drive-close" onClick={onClose}>
           <Icon d={CLOSE} size={26} />
@@ -263,7 +267,13 @@ function DriveMode({ station, song, playIcon, modeButton, fav, onFav, onToggle, 
       </button>
       <div className="drive-info">
         <div className="drive-name">{station?.name ?? 'Choisis une station'}</div>
-        <div className="drive-song">{song || (station && [station.dj, gameLabel(station.game)].filter(Boolean).join(' · '))}</div>
+        {failed ? (
+          <div className="drive-song is-error" role="alert">
+            {FAILED}
+          </div>
+        ) : (
+          <div className="drive-song">{song || (station && [station.dj, gameLabel(station.game)].filter(Boolean).join(' · '))}</div>
+        )}
       </div>
       <div className="drive-controls">
         <button className="drive-btn" onClick={() => onStep(-1)} aria-label="Station précédente">
@@ -279,6 +289,8 @@ function DriveMode({ station, song, playIcon, modeButton, fav, onFav, onToggle, 
     </div>
   )
 }
+
+const FAILED = 'Ne joue pas en ce moment'
 
 const LEFT = 'M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z'
 const RIGHT = 'M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z'
@@ -330,8 +342,8 @@ export default function App() {
 
   const stations = STATIONS_PLAYABLE
   const current = stations.find((st) => st.id === currentId)
-  const q = query.trim().toLowerCase()
-  const visible = stations.filter((st) => !q || `${st.name} ${st.dj} ${st.genre}`.toLowerCase().includes(q))
+  const q = fold(query.trim())
+  const visible = stations.filter((st) => !q || st.search.includes(q))
   const byIds = (ids) => ids.map((id) => stations.find((st) => st.id === id)).filter(Boolean)
   const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
@@ -426,6 +438,8 @@ export default function App() {
       } else if (e.code === 'Escape') {
         setWheelOpen(false)
         setExpanded(false)
+        setSettingsOpen(false)
+        setScrobbleError(null)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -438,7 +452,37 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // The phone's back button (or a back swipe) closes the top layer instead of leaving the app:
+  // while any layer is open, one extra history entry stands in for it.
+  const anyLayer = wheelOpen || settingsOpen || drive || expanded
+  const layers = useRef({})
+  useEffect(() => {
+    layers.current = { wheelOpen, settingsOpen, drive, expanded }
+  })
+  useEffect(() => {
+    if (anyLayer && !window.history.state?.layer) window.history.pushState({ layer: true }, '')
+    else if (!anyLayer && window.history.state?.layer) window.history.back()
+  }, [anyLayer])
+  useEffect(() => {
+    const onPop = () => {
+      if (window.history.state?.layer) return
+      const open = layers.current
+      if (open.wheelOpen) setWheelOpen(false)
+      else if (open.settingsOpen) {
+        setSettingsOpen(false)
+        setScrobbleError(null)
+      } else if (open.drive) setDrive(false)
+      else if (open.expanded) setExpanded(false)
+      else return
+      // Another layer is still open underneath: it keeps an entry.
+      if (Object.values(open).filter(Boolean).length > 1) window.history.pushState({ layer: true }, '')
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
   const song = isCurrentLoaded ? trackAt(current.tracks, yt.time.current) : null
+  const failed = isCurrentLoaded && yt.status === 'error'
   const { status: scrobbleStatus, last: lastScrobble } = useScrobbler({
     videoId: isCurrentLoaded ? current.videoId : null,
     tracks: current?.tracks,
@@ -513,13 +557,15 @@ export default function App() {
         value={isCurrentLoaded ? Math.floor(yt.time.current) : 0}
         disabled={!isCurrentLoaded}
         onChange={(e) => yt.seek(Number(e.target.value))}
+        aria-label="Position dans l'enregistrement"
+        aria-valuetext={fmt(isCurrentLoaded ? yt.time.current : 0)}
         style={{ '--pct': `${pct}%` }}
       />
       <span>{fmt(isCurrentLoaded ? yt.time.duration : 0)}</span>
     </div>
   )
   const modeButton = (
-    <button className="ctrl ctrl--mode" title={`Changer de poste : ${modeInfo.label}`} onClick={cycleMode}>
+    <button className="ctrl ctrl--mode" title={`Changer de poste\u00a0: ${modeInfo.label}`} onClick={cycleMode}>
       <Icon d={modeInfo.icon} />
       <small>{modeInfo.label}</small>
     </button>
@@ -532,13 +578,13 @@ export default function App() {
   )
   const transport = (
     <>
-      <button className="ctrl" title="Station précédente" onClick={() => step(-1)}>
+      <button className="ctrl" title="Station précédente" aria-label="Station précédente" onClick={() => step(-1)}>
         <Icon d={PREV} />
       </button>
-      <button className="ctrl ctrl--main" title="Lecture / pause (espace)" onClick={togglePlay}>
+      <button className="ctrl ctrl--main" title="Lecture / pause (espace)" aria-label="Lecture / pause" onClick={togglePlay}>
         <Icon d={playIcon} />
       </button>
-      <button className="ctrl" title="Station suivante" onClick={() => step(1)}>
+      <button className="ctrl" title="Station suivante" aria-label="Station suivante" onClick={() => step(1)}>
         <Icon d={NEXT} />
       </button>
     </>
@@ -572,7 +618,7 @@ export default function App() {
     <div className={`app ${expanded ? 'is-expanded' : ''}`}>
       <div ref={hostRef} className={`audio-host ${expanded && isCurrentLoaded ? 'audio-host--video' : ''}`} aria-hidden="true" />
 
-      <main className="main" style={{ '--accent': current?.color ?? '#535353' }}>
+      <main className="main" style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer}>
         <header className="main-header">
           <div className="mobile-brand">
             <Icon d={RADIO} size={24} />
@@ -581,7 +627,7 @@ export default function App() {
               className={`drive-open drive-open--icon ${scrobblingOn(scrobbleSettings) || sync ? 'on' : ''}`}
               onClick={() => setSettingsOpen(true)}
               aria-label="Réglages"
-              title="Réglages : synchro entre appareils, scrobbling"
+              title="Réglages&nbsp;: synchro entre appareils, scrobbling"
             >
               <Icon d={GEAR} />
             </button>
@@ -593,8 +639,14 @@ export default function App() {
           <input
             className="search"
             type="search"
-            aria-label="Rechercher une station, un DJ ou un genre"
-            placeholder="Station, DJ ou genre…"
+            name="q"
+            aria-label="Rechercher une station, un DJ, un genre ou un jeu"
+            placeholder="Station, DJ, genre ou jeu…"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -610,10 +662,17 @@ export default function App() {
             </Shelf>
           )
         })}
-        {!visible.length && <p className="empty">Aucune station trouvée.</p>}
+        {!visible.length && (
+          <p className="empty">
+            Aucune station trouvée.{' '}
+            <button className="btn-link" onClick={() => setQuery('')}>
+              Effacer la recherche
+            </button>
+          </p>
+        )}
       </main>
 
-      <footer className={`player ${current ? '' : 'player--empty'}`} style={{ '--accent': current?.color ?? '#535353' }} {...miniSwipe}>
+      <footer className={`player ${current ? '' : 'player--empty'}`} style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer} {...miniSwipe}>
         <button
           className={`player-left ${dragX ? 'dragging' : ''}`}
           onClick={() => current && setExpanded(true)}
@@ -624,7 +683,13 @@ export default function App() {
               <Cover key={current.id} station={current} className="cover--small" />
               <div>
                 <div className="player-title">{current.name}</div>
-                <div className="player-sub">{song || current.dj || gameLabel(current.game)}</div>
+                {failed ? (
+                  <div className="player-sub is-error" role="alert">
+                    {FAILED}
+                  </div>
+                ) : (
+                  <div className="player-sub">{song || current.dj || gameLabel(current.game)}</div>
+                )}
               </div>
             </>
           )}
@@ -643,7 +708,7 @@ export default function App() {
       </footer>
 
       {expanded && current && (
-        <div className="sheet" style={{ '--accent': current.color }}>
+        <div className="sheet" style={{ '--accent': current.color }} inert={wheelOpen || settingsOpen}>
           <div className="sheet-inner" {...sheetSwipe}>
             <div className="sheet-top">
               <button className="ctrl" onClick={() => setExpanded(false)} aria-label="Fermer">
@@ -693,6 +758,8 @@ export default function App() {
               <button
                 className="ctrl"
                 title="Muet"
+                aria-label="Muet"
+                aria-pressed={yt.volume === 0}
                 onClick={() => {
                   if (yt.volume > 0) {
                     setLastVolume(yt.volume)
@@ -707,12 +774,17 @@ export default function App() {
                 min="0"
                 max="100"
                 value={yt.volume}
+                aria-label="Volume"
                 onChange={(e) => yt.setVolume(Number(e.target.value))}
                 style={{ '--pct': `${yt.volume}%` }}
               />
             </div>
             <HeardMap rec={yt.heard[current.videoId]} position={isCurrentLoaded ? yt.time.current : null} onReset={() => yt.resetHeard(current.videoId)} />
-            {yt.status === 'error' && <p className="error">Cette station ne joue pas en ce moment. Essaie-en une autre.</p>}
+            {failed && (
+              <p className="error" role="alert">
+                Cette station ne joue pas en ce moment. Essaie-en une autre.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -721,6 +793,8 @@ export default function App() {
         <DriveMode
           station={current}
           song={song}
+          failed={failed}
+          covered={wheelOpen || settingsOpen}
           playIcon={playIcon}
           modeButton={modeButton}
           fav={isFav}

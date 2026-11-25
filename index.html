@@ -4,7 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/pricedown" />
+    <link rel="preconnect" href="https://fonts.cdnfonts.com" />
+    <link rel="preconnect" href="https://fonts.cdnfonts.com" crossorigin />
+    <link rel="preconnect" href="https://static.wikia.nocookie.net" />
+    <link rel="preconnect" href="https://www.youtube.com" />
+    <!-- Loaded without blocking the first paint: on a weak signal the app shows up with the fallback face. -->
+    <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/pricedown" media="print" onload="this.media='all'" />
     <link rel="apple-touch-icon" href="./icon-180.png" />
     <meta name="apple-mobile-web-app-title" content="Radio" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />

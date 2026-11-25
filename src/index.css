@@ -34,6 +34,44 @@ button {
 button:disabled {
   cursor: default;
 }
+/* Taps get the press state below, not the browser's grey flash, and no double-tap zoom delay. */
+:root {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+input,
+a,
+label {
+  touch-action: manipulation;
+}
+/* Keyboard focus: the same ring on every control. */
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+/* Every control answers a press. */
+.card,
+.ctrl,
+.drive-open,
+.drive-close,
+.drive-btn,
+.player-mini-play,
+.player-step,
+.scrobble-btn,
+.btn-link {
+  transition: transform 0.09s ease-out;
+}
+.card:active,
+.ctrl:active:not(:disabled),
+.drive-open:active,
+.drive-close:active,
+.drive-btn:active,
+.player-mini-play:active,
+.player-step:active,
+.scrobble-btn:active:not(:disabled),
+.btn-link:active {
+  transform: scale(0.96);
+}
 
 /* GTA-style display type: Pricedown with a hard black outline. */
 .display,
@@ -59,6 +97,9 @@ button:disabled {
     repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 6px),
     var(--panel);
   transition: background 0.6s;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 .main::after {
   content: '';
@@ -135,6 +176,13 @@ button:disabled {
   scroll-snap-align: start;
   text-align: left;
 }
+.card:focus-visible {
+  outline: none;
+}
+.card:focus-visible .cover {
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
+}
 .card-cover {
   position: relative;
   margin-bottom: 8px;
@@ -171,7 +219,9 @@ button:disabled {
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
   opacity: 0;
   transform: translateY(8px);
-  transition: all 0.25s;
+  transition:
+    opacity 0.25s,
+    transform 0.25s;
 }
 .card:hover .card-play,
 .card.active .card-play {
@@ -190,6 +240,9 @@ button:disabled {
 .empty {
   color: var(--muted);
   padding: 8px 24px;
+}
+.empty .btn-link {
+  font-size: inherit;
 }
 
 /* What the recording holds: DJ + ads, DJ, music only, talk */
@@ -326,6 +379,7 @@ button:disabled {
   paint-order: stroke fill;
   text-shadow: 3px 4px 0 #000;
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .drive-song {
   margin-top: 10px;
@@ -335,6 +389,10 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.drive-song.is-error,
+.player-sub.is-error {
+  color: #f15e6c;
 }
 .drive-controls {
   width: min(100%, 520px);
@@ -409,6 +467,8 @@ button:disabled {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
 }
 .cover--logo {
   background:
@@ -481,6 +541,10 @@ button:disabled {
 .btn-link:hover {
   color: var(--text);
 }
+.btn-link.armed {
+  color: #f15e6c;
+  font-weight: 700;
+}
 .error {
   color: #f15e6c;
   font-size: 13px;
@@ -489,8 +553,8 @@ button:disabled {
 /* Mini player, floating at the bottom */
 .player {
   position: fixed;
-  left: 8px;
-  right: 8px;
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
   bottom: calc(8px + env(safe-area-inset-bottom));
   max-width: 760px;
   margin: 0 auto;
@@ -505,6 +569,8 @@ button:disabled {
   overflow: hidden;
   z-index: 5;
   touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .player--empty {
   display: none;
@@ -594,6 +660,9 @@ button:disabled {
 .ctrl--main:hover:not(:disabled) {
   color: #000;
   transform: scale(1.06);
+}
+.ctrl--main:active:not(:disabled) {
+  transform: scale(0.96);
 }
 .ctrl--mode {
   gap: 2px;
@@ -702,6 +771,9 @@ input[type='range']:disabled {
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, #0c0c0c) 0, #0c0c0c 75%);
   animation: sheet-up 0.28s ease-out;
   overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .sheet-inner {
   --vw: min(calc(100vw - 32px), 528px);
@@ -749,6 +821,7 @@ input[type='range']:disabled {
   font-size: 40px;
   line-height: 1.05;
   margin-top: 22px;
+  text-wrap: balance;
 }
 .sheet-sub {
   color: var(--muted);
@@ -810,6 +883,7 @@ input[type='range']:disabled {
   background: radial-gradient(circle, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.88) 70%);
   backdrop-filter: blur(6px);
   animation: fade-in 0.18s ease-out;
+  touch-action: none;
 }
 .wheel {
   --size: min(94vw, 86vh, 600px);
@@ -844,7 +918,9 @@ input[type='range']:disabled {
 .wheel-item:hover,
 .wheel-item:focus-visible {
   transform: translate(-50%, -50%) scale(1.18);
-  outline: none;
+}
+.wheel-item:active {
+  transform: translate(-50%, -50%) scale(1.08);
 }
 .wheel-item.active .cover {
   box-shadow:
@@ -871,6 +947,7 @@ input[type='range']:disabled {
   font-size: clamp(24px, calc(var(--size) * 0.07), 42px);
   line-height: 1.05;
   margin-top: 6px;
+  text-wrap: balance;
 }
 .wheel-dj {
   margin-top: 6px;
@@ -941,10 +1018,11 @@ input[type='range']:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sheet,
-  .drive,
-  .wheel-backdrop {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -969,6 +1047,22 @@ input[type='range']:disabled {
   .player-step {
     display: grid;
   }
+  .scrobble-btn:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+  .drive-close:hover,
+  .drive-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .drive-btn--main:hover {
+    background: #eee;
+  }
+  .player-mini-play:hover {
+    transform: scale(1.08);
+  }
+  .player-mini-play:active {
+    transform: scale(0.96);
+  }
 }
 
 /* Scrobbling */
@@ -985,7 +1079,9 @@ input[type='range']:disabled {
 .scrobble-panel {
   width: min(440px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 20px;
   border-radius: 12px;
   background: var(--panel);
@@ -1017,6 +1113,7 @@ input[type='range']:disabled {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.4;
+  text-wrap: pretty;
 }
 .scrobble-row {
   display: flex;
@@ -1045,6 +1142,12 @@ input[type='range']:disabled {
   display: grid;
   gap: 8px;
   margin-top: 8px;
+}
+.scrobble-keys label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
 }
 .scrobble-btn {
   padding: 9px 16px;
