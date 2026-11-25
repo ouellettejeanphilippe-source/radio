@@ -39,8 +39,16 @@ export function holdSession(playing) {
     keeper.loop = true
   }
   // Refused when nothing has been touched yet; the touch that starts a station comes first.
-  keeper.play().catch(() => {})
+  keeper.play().then(
+    () => (refused = null),
+    (e) => (refused = e.name),
+  )
 }
+
+// What the silent track is doing, for the settings panel: 'idle' (never started), 'playing',
+// 'paused', or 'refused' with the browser's reason.
+let refused = null
+export const sessionStatus = () => (!keeper ? { state: 'idle' } : refused ? { state: 'refused', why: refused } : { state: keeper.paused ? 'paused' : 'playing' })
 
 // On iPhones, two sounds at once is a different story that hasn't been tried: off there unless asked.
 export const sessionByDefault = !/iPhone|iPad|iPod/.test(navigator.userAgent)

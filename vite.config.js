@@ -5,4 +5,6 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: './',
   plugins: [react()],
+  // Shown in the settings panel, so a phone can tell which version it is running.
+  define: { 'import.meta.env.VITE_BUILD': JSON.stringify(new Date().toISOString()) },
 })

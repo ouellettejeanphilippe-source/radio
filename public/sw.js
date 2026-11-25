@@ -1,4 +1,4 @@
-const CACHE = 'radio-v1'
+const CACHE = 'radio-v2'
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -14,8 +14,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request
   const url = new URL(req.url)
-  // YouTube and thumbnails go straight to the network.
-  if (req.method !== 'GET' || url.origin !== self.location.origin) return
+  // YouTube and thumbnails go straight to the network. So does the app's own check for a newer
+  // version (update.js), which asks for the page afresh with ?fresh: nothing of it is kept.
+  if (req.method !== 'GET' || url.origin !== self.location.origin || req.cache === 'no-store' || url.searchParams.has('fresh')) return
 
   // Pages: network first so a new deploy shows up right away; cache as offline fallback.
   if (req.mode === 'navigate') {
