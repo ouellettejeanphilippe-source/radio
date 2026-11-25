@@ -7,6 +7,7 @@ import { aimAt, wheelLayout } from './wheel.js'
 import META from './meta.json'
 import { countScrobblable, finishLastfmLogin, parseSong, scrobblingOn, useScrobbler, useScrobbleSettings } from './scrobble.js'
 import Settings from './Settings.jsx'
+import GameBand from './GameBand.jsx'
 import ConfirmButton from './Confirm.jsx'
 import { startSync, useSync } from './sync.js'
 
@@ -17,6 +18,8 @@ const RECENT_KEY = 'radio:recent'
 const DRIVE_KEY = 'radio:drive'
 const LIVE_KEY = 'radio:live'
 const KNOWS_WHEEL_KEY = 'radio:knows-wheel'
+// On this device: whether a station was playing when the app was last left.
+const PLAYING_KEY = 'radio:playing'
 
 function readJson(key, fallback) {
   try {
@@ -48,7 +51,6 @@ const VOL = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.47 4.47 0 0 0 2
 const MUTE = 'M3 9v6h4l5 5V4L7 9H3zm13.59 3L19 9.59 17.59 8.17 15.17 10.6 12.76 8.17 11.34 9.59 13.76 12l-2.42 2.41 1.42 1.42 2.41-2.42 2.42 2.42L19 14.41z'
 const RADIO = 'M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM7 20a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm13-8h-2v-2h-2v2H4V8h16v4z'
 const CHEVRON = 'M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z'
-const CHEVRON_UP = 'M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z'
 const SHUFFLE = 'M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z'
 const GAMEPAD = 'M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'
 const CALENDAR = 'M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14v11zM7 11h5v5H7z'
@@ -196,7 +198,6 @@ function RadioWheel({ ref, title, stations, currentId, hold, onPick, onGame, onC
         onClick={(e) => e.stopPropagation()}
         style={{ width: 2 * layout.rx + layout.item, height: 2 * layout.ry + layout.item, '--item': `${layout.item}px` }}
       >
-        <div className="wheel-ring" />
         {stations.map((st, i) => (
           <button
             key={st.id}
@@ -320,7 +321,7 @@ function dropNextClick() {
   setTimeout(() => window.removeEventListener('click', drop, { capture: true }), 350)
 }
 // Controls that keep their own long press: holding one of them doesn't open the wheel.
-const NO_HOLD = '.ctrl, .drive-btn, .drive-close, .player-mini-play, .player-step, .hold-hint, .dash-band'
+const NO_HOLD = '.ctrl, .drive-btn, .drive-close, .player-mini-play, .player-step, .hold-hint, .now-text, .sheet-dial'
 
 // Tracks a touch and reports whether it became a horizontal or vertical drag. With `hold`, a finger
 // that stays put for a moment starts a hold instead: its moves and its release go to hold.move and
@@ -470,11 +471,11 @@ function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, 
 const FAILED = 'Ne joue pas en ce moment'
 
 // A titled horizontal row of stations; arrows scroll it with a mouse.
-function Shelf({ title, count, children }) {
+function Shelf({ id, title, count, children }) {
   const rowRef = useRef(null)
   const scroll = (dir) => rowRef.current.scrollBy({ left: dir * rowRef.current.clientWidth * 0.8, behavior: 'smooth' })
   return (
-    <section className="shelf">
+    <section className="shelf" id={id}>
       <div className="shelf-head">
         <h2>{title}</h2>
         <span className="shelf-count">
@@ -503,7 +504,12 @@ export default function App() {
   const [loadedId, setLoadedId] = useState(null)
   const [mode, setMode] = useState(() => readJson(MODE_KEY, 'game'))
   const [live, setLive] = useState(() => readJson(LIVE_KEY, false))
-  const [expanded, setExpanded] = useState(false)
+  // The listening screen. 'restored' when the app opens on it because a station was playing at the
+  // last visit: it is then already there, instead of sliding up, and one touch on play resumes.
+  const [expanded, setExpanded] = useState(() => {
+    const id = readJson(PLAYING_KEY, false) && !readJson(DRIVE_KEY, false) && readJson(CURRENT_KEY, null)
+    return STATIONS_PLAYABLE.some((st) => st.id === id) ? 'restored' : false
+  })
   const [details, setDetails] = useState(false)
   // The radio wheel: which game it shows, and whether a finger or the Q key is holding it open.
   const [wheel, setWheel] = useState(null)
@@ -520,6 +526,7 @@ export default function App() {
   const { sync } = useSync()
   const history = useRef([])
   const hostRef = useRef(null)
+  const mainRef = useRef(null)
   const stopStatic = useRef(null)
   const wheelRef = useRef(null)
   // While the wheel is held open: where the hold started and whether the pointer has moved since.
@@ -530,6 +537,7 @@ export default function App() {
   const current = stations.find((st) => st.id === currentId)
   const q = fold(query.trim())
   const visible = stations.filter((st) => !q || st.search.includes(q))
+  const shownGames = GAMES.filter((g) => visible.some((st) => st.game === g.id))
   const byIds = (ids) => ids.map((id) => stations.find((st) => st.id === id)).filter(Boolean)
   const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
@@ -553,6 +561,13 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(DRIVE_KEY, JSON.stringify(drive))
   }, [drive])
+
+  // Remembered for the next visit. A pause counts as having stopped; a station that fails or an
+  // app that is closed while it plays doesn't.
+  useEffect(() => {
+    if (yt.status === 'playing') localStorage.setItem(PLAYING_KEY, 'true')
+    else if (yt.status === 'paused') localStorage.setItem(PLAYING_KEY, 'false')
+  }, [yt.status])
 
   // The static stops once the new station is playing (or has failed).
   useEffect(() => {
@@ -756,9 +771,17 @@ export default function App() {
   useEffect(() => {
     layers.current = { wheel: wheelLayer, settingsOpen, drive, details, expanded }
   })
+  const justLoaded = useRef(true)
   useEffect(() => {
+    const atLoad = justLoaded.current
+    justLoaded.current = false
     if (anyLayer && !window.history.state?.layer) window.history.pushState({ layer: true }, '')
-    else if (!anyLayer && window.history.state?.layer) window.history.back()
+    else if (!anyLayer && window.history.state?.layer) {
+      // An entry left from before a reload has nothing under it in this page: going back from it
+      // would load the app a second time, so it just becomes a plain entry.
+      if (atLoad) window.history.replaceState(null, '')
+      else window.history.back()
+    }
   }, [anyLayer])
   useEffect(() => {
     const onPop = () => {
@@ -781,8 +804,6 @@ export default function App() {
 
   const trackNow = isCurrentLoaded ? trackIndex(current.tracks, yt.time.current) : -1
   const song = trackNow >= 0 ? current.tracks[trackNow][1] : null
-  // The next line of the running order that is a song, not an ad or the DJ.
-  const nextSong = trackNow >= 0 ? current.tracks.find((_, i) => i > trackNow && current.songs[i])?.[1] : null
   const failed = isCurrentLoaded && yt.status === 'error'
   const { status: scrobbleStatus, last: lastScrobble } = useScrobbler({
     videoId: isCurrentLoaded ? current.videoId : null,
@@ -859,7 +880,6 @@ export default function App() {
   const playIcon = isCurrentLoaded && isPlaying ? PAUSE : PLAY
   const tuning = isCurrentLoaded && yt.status === 'buffering'
   const pct = isCurrentLoaded && yt.time.duration ? (yt.time.current / yt.time.duration) * 100 : 0
-  const heardNow = current && yt.heard[current.videoId]
   const dragStyle = dragX ? { transform: `translateX(${dragX}px)`, opacity: Math.max(0.3, 1 - Math.abs(dragX) / 280) } : undefined
   const modeButton = (
     <button className="ctrl ctrl--mode" title={`Changer de poste : ${modeInfo.label}`} onClick={cycleMode}>
@@ -925,7 +945,7 @@ export default function App() {
     <div className="app">
       <div ref={hostRef} className={`audio-host ${details && isCurrentLoaded ? 'audio-host--video' : ''}`} aria-hidden="true" />
 
-      <main className="main" style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer}>
+      <main ref={mainRef} className="main" style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer}>
         <header className="main-header">
           {searching ? (
             <div className="search-bar">
@@ -975,6 +995,8 @@ export default function App() {
             </div>
           )}
         </header>
+        {/* A search already narrows the page down: the band is for the whole catalogue. */}
+        {!q && <GameBand games={shownGames} scroller={mainRef} />}
         {!q && favs.length > 0 && (
           <Shelf title="Tes favoris" count={byIds(favs).length}>
             {byIds(favs).map(renderCard)}
@@ -985,11 +1007,10 @@ export default function App() {
             {byIds(recent).map(renderCard)}
           </Shelf>
         )}
-        {GAMES.map((g) => {
+        {shownGames.map((g) => {
           const list = visible.filter((st) => st.game === g.id)
-          if (!list.length) return null
           return (
-            <Shelf key={g.id} title={g.name} count={list.length}>
+            <Shelf key={g.id} id={`jeu-${g.id}`} title={g.name} count={list.length}>
               {list.map(renderCard)}
             </Shelf>
           )
@@ -1040,10 +1061,10 @@ export default function App() {
         </span>
       </footer>
 
-      {/* The listening screen: the station's sign in the night, and the dash under it. */}
+      {/* The listening screen: the station's sign in the night, and next to nothing else. */}
       {expanded && current && (
         <div
-          className={`sheet ${isCurrentLoaded && yt.status === 'playing' ? 'is-playing' : ''} ${tuning ? 'is-tuning' : ''}`}
+          className={`sheet ${expanded === 'restored' ? 'sheet--restored' : ''} ${isCurrentLoaded && yt.status === 'playing' ? 'is-playing' : ''} ${tuning ? 'is-tuning' : ''}`}
           style={{ '--accent': current.color }}
           inert={details || wheelLayer || settingsOpen}
           {...sheetSwipe}
@@ -1077,26 +1098,19 @@ export default function App() {
               <Cover key={current.id} station={current} />
             </button>
           </div>
-          <div className="dash">
-            <button className="dash-band" onClick={() => setDetails(true)} aria-label="Cadran, liste des chansons et vidéo">
-              <span className="dash-time">{fmt(isCurrentLoaded ? yt.time.current : 0)}</span>
-              <span className="band">
-                {heardNow?.d > 0 && heardNow.iv.map(([a, b]) => <span key={a} style={{ left: `${(a / heardNow.d) * 100}%`, width: `${((b - a) / heardNow.d) * 100}%` }} />)}
-                <i style={{ left: `${pct}%` }} />
-              </span>
-              <Icon d={CHEVRON_UP} size={22} />
-            </button>
-            <div className="dash-now">
-              <div className="dash-name">
+          {/* What's on, in a corner, and one key. Touching the text or the dial opens the details. */}
+          <div className="now">
+            <button className="now-text" onClick={() => setDetails(true)} title="Liste des chansons, cadran et vidéo">
+              <span className="now-name">
                 <Bars />
                 {current.name}
-              </div>
+              </span>
               {failed ? (
-                <div className="dash-song is-error" role="alert">
+                <span className="now-song is-error" role="alert">
                   {FAILED}
-                </div>
+                </span>
               ) : (
-                <div className="dash-song">
+                <span className="now-song">
                   {song || [current.dj, current.genre].filter(Boolean).join(' · ')}
                   {song && scrobbleStatus?.state === 'done' && <span className="song-scrobble song-scrobble--done"> ✓ envoyée</span>}
                   {song && scrobbleStatus?.state === 'error' && (
@@ -1105,12 +1119,12 @@ export default function App() {
                       ! non envoyée
                     </span>
                   )}
-                </div>
+                </span>
               )}
-              {nextSong && !failed && <div className="dash-next">Ensuite&nbsp;: {nextSong}</div>}
-            </div>
-            <div className="controls dash-keys">{transport}</div>
-            <div className="dash-side">
+            </button>
+            {/* A finger swipes to change station: only a mouse gets the two side keys. */}
+            <div className="controls now-keys">{transport}</div>
+            <div className="now-side">
               {volume}
               <button className={`hold-hint ${knowsWheel ? 'hold-hint--known' : ''}`} onClick={openWheel}>
                 <span className="hold-hint--touch">Garde le doigt appuyé pour la roue</span>
@@ -1120,10 +1134,15 @@ export default function App() {
               </button>
             </div>
           </div>
+          <button className="sheet-dial" onClick={() => setDetails(true)} aria-label="Cadran, liste des chansons et vidéo">
+            <span className="player-dial" style={{ '--pct': `${pct}%` }}>
+              <i />
+            </span>
+          </button>
         </div>
       )}
 
-      {/* Behind the dash's band: the video, the running order, the full dial and the swipe mode. */}
+      {/* Behind the dial: the video, the list of songs, the full dial and the swipe mode. */}
       {expanded && details && current && (
         <div className="details" style={{ '--accent': current.color }} inert={wheelLayer || settingsOpen} {...detailsSwipe}>
           <div className="details-inner">
@@ -1155,7 +1174,7 @@ export default function App() {
               onSeek={yt.seek}
               onReset={() => yt.resetHeard(current.videoId)}
             />
-            <div className="dash-legend" id="modes-legend">
+            <div className="legend" id="modes-legend">
               Glisser change de poste
             </div>
             <div className="modes" role="group" aria-labelledby="modes-legend">

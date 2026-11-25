@@ -86,14 +86,12 @@ label {
 .display,
 .mobile-brand > h1,
 .shelf h2,
-.dash-name,
 .wheel-name {
   font-family: var(--display);
   font-weight: 900;
   letter-spacing: 1px;
 }
 .mobile-brand > h1,
-.dash-name,
 .wheel-name {
   -webkit-text-stroke: 1.5px #000;
   paint-order: stroke fill;
@@ -182,6 +180,122 @@ label {
 .search-field:focus-within {
   border-color: var(--dial);
   color: var(--dial);
+}
+/* The band of games: the home screen's index, drawn like the tuner band. A series is printed once,
+   its games are the marks, and the needle sits on the one the page is scrolled to. */
+.gameband {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 3;
+  margin-top: 8px;
+  padding: 8px 16px;
+  transition: background 0.2s;
+}
+/* Once stuck, it gets a backing so the shelves pass under it, up to the top of the screen. */
+.gameband.is-stuck,
+.gameband.is-stuck::before {
+  background: color-mix(in srgb, var(--asphalt) 84%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.gameband.is-stuck {
+  box-shadow: 0 1px 0 var(--bezel);
+}
+.gameband.is-stuck::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: env(safe-area-inset-top);
+}
+.gameband-well {
+  max-width: 1248px;
+  height: 44px;
+  margin: 0 auto;
+  border-radius: 8px;
+  border: 1px solid var(--bezel-strong);
+  background: var(--well);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.gameband-well::-webkit-scrollbar {
+  display: none;
+}
+.gameband-scale {
+  position: relative;
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  height: 100%;
+  padding: 0 4px;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 8px) 0 100% / 100% 5px no-repeat;
+}
+.gameband-group {
+  display: flex;
+  align-items: stretch;
+  padding: 0 4px;
+}
+.gameband-group + .gameband-group {
+  border-left: 1px solid var(--bezel);
+}
+.gameband-series,
+.gameband-mark {
+  display: flex;
+  align-items: center;
+  padding-bottom: 6px;
+  white-space: nowrap;
+}
+.gameband-series {
+  padding-left: 8px;
+  padding-right: 4px;
+  color: var(--legend-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.gameband-mark {
+  justify-content: center;
+  min-width: 36px;
+  padding-left: 8px;
+  padding-right: 8px;
+  color: var(--legend-2);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    color 0.15s,
+    transform 0.09s ease-out;
+}
+.gameband-mark:active {
+  transform: scale(0.94);
+}
+.gameband-mark[aria-current] {
+  color: var(--legend);
+}
+.gameband-mark:focus-visible {
+  outline-offset: -3px;
+}
+.gameband-needle {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  height: 11px;
+  margin-left: -1.5px;
+  border-radius: 1px;
+  background: var(--needle);
+  box-shadow: 0 0 8px var(--needle);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.2s;
+}
+/* A jump from the band leaves the shelf's title clear of it. */
+.shelf {
+  scroll-margin-top: calc(72px + env(safe-area-inset-top));
 }
 .shelf-head {
   display: flex;
@@ -652,7 +766,8 @@ label {
   box-shadow: 0 0 6px var(--needle);
 }
 /* Tuning in: the needle sweeps the band until the station plays, like the static you hear. */
-.player.is-tuning .player-dial i {
+.player.is-tuning .player-dial i,
+.sheet.is-tuning .player-dial i {
   animation: sweep 1.1s ease-in-out infinite alternate;
 }
 @keyframes sweep {
@@ -769,9 +884,7 @@ input[type='range']:disabled {
   margin-top: auto;
   padding-top: 16px;
 }
-/* The dash of the listening screen carries the same band, smaller and read-only (.band). */
-.dial-band,
-.band {
+.dial-band {
   position: relative;
   height: 40px;
   border-radius: 8px;
@@ -782,38 +895,7 @@ input[type='range']:disabled {
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 2%) 0 100% / 100% 7px no-repeat,
     var(--well);
 }
-.band {
-  height: 24px;
-  border-radius: 6px;
-  background-size:
-    100% 9px,
-    100% 5px,
-    auto;
-}
-.band i {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--needle);
-  box-shadow: 0 0 8px var(--needle);
-}
-/* Tuning in: the needle sweeps the band, like on the mini player. */
-.sheet.is-tuning .band i {
-  animation: band-sweep 1.1s ease-in-out infinite alternate;
-}
-@keyframes band-sweep {
-  from {
-    left: 2%;
-  }
-  to {
-    left: 98%;
-  }
-}
-.dial-band span,
-.band span {
+.dial-band span {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -902,23 +984,27 @@ input[type='range']:disabled {
   border-radius: 8px;
 }
 
-/* The listening screen: the station's sign out in the night, and the dash under it. */
+/* The listening screen: the station's sign out in the night, and next to nothing else. What's on
+   sits in a corner with one key; the dial is a line at the bottom, as on the mini player. */
 .sheet {
   position: fixed;
   inset: 0;
   z-index: 30;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  /* The same ground as the home screen, lit from where the sign hangs. */
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  /* The night, lit from where the sign hangs. */
   background:
-    radial-gradient(90% 56% at 50% 42%, color-mix(in srgb, var(--accent) 32%, transparent) 0, transparent 100%),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 2px, transparent 2px 6px),
+    radial-gradient(90% 56% at 50% 44%, color-mix(in srgb, var(--accent) 30%, transparent) 0, transparent 100%),
     var(--asphalt);
   animation: sheet-up 0.28s ease-out;
   overflow: hidden;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+}
+/* Opened on at launch: it's simply there. */
+.sheet--restored {
+  animation: none;
 }
 .sheet-top {
   height: 56px;
@@ -941,7 +1027,7 @@ input[type='range']:disabled {
 /* Dash legends: small, tracked capitals, like the lettering silk-screened next to a key. */
 .sheet-game,
 .lamp,
-.dash-legend,
+.legend,
 .wheel-hint {
   font-size: 11px;
   font-weight: 700;
@@ -982,10 +1068,10 @@ input[type='range']:disabled {
   /* A row as tall as the stage, so the sign can be sized against it and never slides under the dash. */
   grid-template-rows: minmax(0, 1fr);
   place-items: center;
-  padding: 4px 24px 20px;
+  padding: 4px 20px 24px;
 }
 .sheet-art {
-  height: min(100%, 76vw, 460px);
+  height: min(100%, 84vw, 520px);
   max-width: 100%;
   aspect-ratio: 1;
   border-radius: 12px;
@@ -1016,54 +1102,48 @@ input[type='range']:disabled {
   filter: drop-shadow(0 0 34px color-mix(in srgb, var(--c) 58%, transparent)) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
 }
 
-/* The dash: the band you tune on, what's on, and three keys. */
-.dash {
-  position: relative;
-  z-index: 1;
+/* What's on: the station and the song as a caption in the corner, and the play key. */
+.now {
   display: grid;
-  gap: 12px;
-  padding: 4px max(20px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-  background: color-mix(in srgb, var(--accent) 12%, var(--dash));
-  border-top: 1px solid var(--bezel-strong);
-}
-/* The band opens the details: the full dial, the running order and the video. */
-.dash-band {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  height: 44px;
-  color: var(--legend-3);
+  column-gap: 16px;
+  padding: 0 max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
 }
-.dash-band:hover {
-  color: var(--legend);
-}
-.dash-time {
-  min-width: 4ch;
-  color: var(--legend-2);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+.now-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 0;
   text-align: left;
 }
-.dash-now {
-  min-width: 0;
+.now-name,
+.now-song {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.dash-name {
-  font-size: clamp(26px, 8.8vw, 44px);
-  line-height: 1.05;
-  text-wrap: balance;
+.now-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+.now-song {
+  color: var(--legend-2);
+  font-size: 14px;
+}
+.now-song.is-error {
+  color: var(--needle);
 }
 /* Equalizer bars before the name: they move while the station plays. */
 .bars {
   display: inline-flex;
   align-items: flex-end;
-  gap: 3px;
-  height: 0.5em;
-  margin-right: 0.28em;
+  gap: 2px;
+  height: 12px;
+  margin-right: 8px;
 }
 .bars i {
-  width: 4px;
+  width: 3px;
   height: 100%;
   border-radius: 1px;
   background: var(--dial);
@@ -1089,62 +1169,54 @@ input[type='range']:disabled {
     transform: scaleY(1);
   }
 }
-.dash-song,
-.dash-next {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.now-keys {
+  gap: 20px;
 }
-.dash-song {
-  margin-top: 8px;
-  font-size: 16px;
-  font-weight: 600;
-}
-.dash-song.is-error {
-  color: var(--needle);
-}
-.dash-next {
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--legend-3);
-}
-.dash-keys {
-  justify-content: center;
-  gap: 44px;
-}
-.dash-keys .ctrl {
+.now-keys .ctrl {
   color: var(--legend);
 }
-.dash-keys .ctrl svg {
-  width: 34px;
-  height: 34px;
+/* A finger swipes to change station. */
+.now-keys .ctrl:not(.ctrl--main) {
+  display: none;
 }
-.dash-keys .ctrl--main {
-  width: 68px;
-  height: 68px;
+.now-keys .ctrl--main {
+  width: 56px;
+  height: 56px;
 }
-.dash-keys .ctrl--main svg {
-  width: 30px;
-  height: 30px;
+.now-keys .ctrl--main svg {
+  width: 26px;
+  height: 26px;
   color: var(--dial-ink);
 }
-.dash-side {
+.now-side {
+  grid-column: 1 / -1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 16px;
   min-width: 0;
 }
-.dash-side .volume {
-  width: min(100%, 220px);
+.now-side .volume {
+  width: min(100%, 200px);
   margin: 0;
 }
-/* How to get the wheel, said once where the thumb rests. It is a key too. */
+/* The dial, as a line along the bottom: a touch on it opens the details. */
+.sheet-dial {
+  position: relative;
+  height: 32px;
+  margin: 0 max(20px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(20px, env(safe-area-inset-left));
+}
+.sheet-dial .player-dial {
+  left: 0;
+  right: 0;
+  bottom: 12px;
+}
+/* How to get the wheel, said once under the caption. It is a key too. */
 .hold-hint {
   min-height: 32px;
-  padding: 0 8px;
   color: var(--legend-3);
   font-size: 12px;
+  text-align: left;
 }
 .hold-hint:hover {
   color: var(--legend);
@@ -1172,53 +1244,42 @@ input[type='range']:disabled {
   }
 }
 
-/* Computers: one row on the dash, under the band. */
+/* Computers: the caption on the left, the keys in the middle, volume and the Q hint on the right. */
 @media (min-width: 860px) and (min-height: 560px) {
-  .sheet-art {
-    height: min(100%, 460px);
-  }
-  .dash {
+  .now {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    column-gap: 32px;
-    padding-bottom: 18px;
+    padding-top: 8px;
   }
-  .dash-band {
-    grid-column: 1 / -1;
-  }
-  .dash-side {
+  .now-side {
+    grid-column: auto;
+    flex-direction: column;
     align-items: flex-end;
+    gap: 4px;
   }
 }
-/* Phone on its side: the sign on the left, the dash on the right. */
+/* Phone on its side: the sign on the left, the caption on the right. */
 @media (orientation: landscape) and (max-height: 559px) {
   .sheet {
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
   }
   .sheet > .sheet-top {
     grid-column: 1 / -1;
     height: 44px;
   }
   .sheet-stage {
-    padding-bottom: 20px;
+    padding-bottom: 8px;
   }
-  .dash {
+  .now {
     align-content: center;
-    gap: 6px;
-    border-top: 0;
-    border-left: 1px solid var(--bezel-strong);
   }
-  .dash-name {
-    font-size: 30px;
-  }
-  .dash-keys .ctrl--main {
-    width: 56px;
-    height: 56px;
+  .sheet-dial {
+    grid-column: 1 / -1;
+    height: 24px;
   }
 }
 
-/* The details, behind the band: the video, the running order, the full dial, the swipe mode. */
+/* The details, behind the dial: the video, the list of songs, the full dial, the swipe mode. */
 .details {
   position: fixed;
   inset: 0;
@@ -1318,7 +1379,7 @@ input[type='range']:disabled {
   color: var(--legend-3);
   font-size: 13px;
 }
-.dash-legend {
+.legend {
   margin-top: 16px;
   color: var(--legend-3);
 }
@@ -1369,13 +1430,6 @@ input[type='range']:disabled {
 }
 .wheel {
   position: relative;
-}
-.wheel-ring {
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.2) 0 60%, rgba(0, 0, 0, 0.55) 61% 100%);
-  border: 2px solid rgba(255, 255, 255, 0.08);
 }
 .wheel-item {
   position: absolute;
@@ -1563,8 +1617,18 @@ input[type='range']:disabled {
   .hold-hint--known {
     display: block;
   }
+  .now-keys .ctrl:not(.ctrl--main) {
+    display: grid;
+  }
+  .now-text:hover .now-song,
+  .sheet-dial:hover {
+    color: var(--legend);
+  }
   .mode-key:hover {
     background: var(--key-lit);
+  }
+  .gameband-mark:hover {
+    color: var(--legend);
   }
   .sheet-art:hover .cover {
     transform: scale(1.02);
