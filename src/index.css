@@ -183,6 +183,122 @@ label {
   border-color: var(--dial);
   color: var(--dial);
 }
+/* The band of games: the home screen's index, drawn like the tuner band. A series is printed once,
+   its games are the marks, and the needle sits on the one the page is scrolled to. */
+.gameband {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 3;
+  margin-top: 8px;
+  padding: 8px 16px;
+  transition: background 0.2s;
+}
+/* Once stuck, it gets a backing so the shelves pass under it, up to the top of the screen. */
+.gameband.is-stuck,
+.gameband.is-stuck::before {
+  background: color-mix(in srgb, var(--asphalt) 84%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.gameband.is-stuck {
+  box-shadow: 0 1px 0 var(--bezel);
+}
+.gameband.is-stuck::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: env(safe-area-inset-top);
+}
+.gameband-well {
+  max-width: 1248px;
+  height: 44px;
+  margin: 0 auto;
+  border-radius: 8px;
+  border: 1px solid var(--bezel-strong);
+  background: var(--well);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.gameband-well::-webkit-scrollbar {
+  display: none;
+}
+.gameband-scale {
+  position: relative;
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  height: 100%;
+  padding: 0 4px;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 8px) 0 100% / 100% 5px no-repeat;
+}
+.gameband-group {
+  display: flex;
+  align-items: stretch;
+  padding: 0 4px;
+}
+.gameband-group + .gameband-group {
+  border-left: 1px solid var(--bezel);
+}
+.gameband-series,
+.gameband-mark {
+  display: flex;
+  align-items: center;
+  padding-bottom: 6px;
+  white-space: nowrap;
+}
+.gameband-series {
+  padding-left: 8px;
+  padding-right: 4px;
+  color: var(--legend-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.gameband-mark {
+  justify-content: center;
+  min-width: 36px;
+  padding-left: 8px;
+  padding-right: 8px;
+  color: var(--legend-2);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    color 0.15s,
+    transform 0.09s ease-out;
+}
+.gameband-mark:active {
+  transform: scale(0.94);
+}
+.gameband-mark[aria-current] {
+  color: var(--legend);
+}
+.gameband-mark:focus-visible {
+  outline-offset: -3px;
+}
+.gameband-needle {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  height: 11px;
+  margin-left: -1.5px;
+  border-radius: 1px;
+  background: var(--needle);
+  box-shadow: 0 0 8px var(--needle);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.2s;
+}
+/* A jump from the band leaves the shelf's title clear of it. */
+.shelf {
+  scroll-margin-top: calc(72px + env(safe-area-inset-top));
+}
 .shelf-head {
   display: flex;
   align-items: baseline;
@@ -920,6 +1036,10 @@ input[type='range']:disabled {
   -webkit-user-select: none;
   user-select: none;
 }
+/* Opened on at launch: it's simply there. */
+.sheet--restored {
+  animation: none;
+}
 .sheet-top {
   height: 56px;
   flex: none;
@@ -1565,6 +1685,9 @@ input[type='range']:disabled {
   }
   .mode-key:hover {
     background: var(--key-lit);
+  }
+  .gameband-mark:hover {
+    color: var(--legend);
   }
   .sheet-art:hover .cover {
     transform: scale(1.02);

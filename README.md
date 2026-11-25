@@ -6,6 +6,8 @@ Le repo contient l'interface et la liste des stations, sans audio ni logos de je
 
 ## Fonctionnement
 
+- En haut de l'accueil, la bande des jeux sert d'index : chaque série y est inscrite une fois et chaque jeu est un repère. L'aiguille suit le jeu où la page est rendue, un toucher sur un repère y amène, et la bande reste collée en haut pendant qu'on défile (`src/GameBand.jsx`).
+- Si un poste jouait quand on a quitté l'app, elle rouvre directement sur l'écran d'écoute : un toucher sur lecture et ça reprend. Après une pause, elle rouvre sur l'accueil.
 - Toucher une station la fait jouer. Le mini-lecteur du bas ouvre l'écran d'écoute : le logo du poste en grand, et dessous le tableau de bord (cadran, poste, chanson en cours et la suivante, trois touches).
 - La roue des radios montre les stations d'un jeu, comme dans GTA. Garder le doigt appuyé sur le lecteur (mini-lecteur, écran d'écoute ou mode auto) l'ouvre : on glisse vers un logo et on relâche pour syntoniser. Au clavier, c'est la touche Q qu'on garde enfoncée, en visant avec la souris. Un simple toucher sur le logo (ou un coup bref sur Q) l'ouvre aussi, pour choisir en touchant. Les flèches au centre (ou ← →) passent d'un jeu à l'autre. Quand un jeu a beaucoup de postes, la roue s'étire en ovale pour que les logos restent assez gros (`src/wheel.js`).
 - Toucher le cadran de l'écran d'écoute (ou glisser vers le haut) montre les détails : la vidéo, la liste des chansons avec celle qui joue (un toucher y saute), le cadran complet et le mode de glissement.

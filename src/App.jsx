@@ -7,6 +7,7 @@ import { aimAt, wheelLayout } from './wheel.js'
 import META from './meta.json'
 import { countScrobblable, finishLastfmLogin, parseSong, scrobblingOn, useScrobbler, useScrobbleSettings } from './scrobble.js'
 import Settings from './Settings.jsx'
+import GameBand from './GameBand.jsx'
 import ConfirmButton from './Confirm.jsx'
 import { startSync, useSync } from './sync.js'
 
@@ -17,6 +18,8 @@ const RECENT_KEY = 'radio:recent'
 const DRIVE_KEY = 'radio:drive'
 const LIVE_KEY = 'radio:live'
 const KNOWS_WHEEL_KEY = 'radio:knows-wheel'
+// On this device: whether a station was playing when the app was last left.
+const PLAYING_KEY = 'radio:playing'
 
 function readJson(key, fallback) {
   try {
@@ -470,11 +473,11 @@ function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, 
 const FAILED = 'Ne joue pas en ce moment'
 
 // A titled horizontal row of stations; arrows scroll it with a mouse.
-function Shelf({ title, count, children }) {
+function Shelf({ id, title, count, children }) {
   const rowRef = useRef(null)
   const scroll = (dir) => rowRef.current.scrollBy({ left: dir * rowRef.current.clientWidth * 0.8, behavior: 'smooth' })
   return (
-    <section className="shelf">
+    <section className="shelf" id={id}>
       <div className="shelf-head">
         <h2>{title}</h2>
         <span className="shelf-count">
@@ -503,7 +506,12 @@ export default function App() {
   const [loadedId, setLoadedId] = useState(null)
   const [mode, setMode] = useState(() => readJson(MODE_KEY, 'game'))
   const [live, setLive] = useState(() => readJson(LIVE_KEY, false))
-  const [expanded, setExpanded] = useState(false)
+  // The listening screen. 'restored' when the app opens on it because a station was playing at the
+  // last visit: it is then already there, instead of sliding up, and one touch on play resumes.
+  const [expanded, setExpanded] = useState(() => {
+    const id = readJson(PLAYING_KEY, false) && !readJson(DRIVE_KEY, false) && readJson(CURRENT_KEY, null)
+    return STATIONS_PLAYABLE.some((st) => st.id === id) ? 'restored' : false
+  })
   const [details, setDetails] = useState(false)
   // The radio wheel: which game it shows, and whether a finger or the Q key is holding it open.
   const [wheel, setWheel] = useState(null)
@@ -520,6 +528,7 @@ export default function App() {
   const { sync } = useSync()
   const history = useRef([])
   const hostRef = useRef(null)
+  const mainRef = useRef(null)
   const stopStatic = useRef(null)
   const wheelRef = useRef(null)
   // While the wheel is held open: where the hold started and whether the pointer has moved since.
@@ -530,6 +539,7 @@ export default function App() {
   const current = stations.find((st) => st.id === currentId)
   const q = fold(query.trim())
   const visible = stations.filter((st) => !q || st.search.includes(q))
+  const shownGames = GAMES.filter((g) => visible.some((st) => st.game === g.id))
   const byIds = (ids) => ids.map((id) => stations.find((st) => st.id === id)).filter(Boolean)
   const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
@@ -553,6 +563,13 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(DRIVE_KEY, JSON.stringify(drive))
   }, [drive])
+
+  // Remembered for the next visit. A pause counts as having stopped; a station that fails or an
+  // app that is closed while it plays doesn't.
+  useEffect(() => {
+    if (yt.status === 'playing') localStorage.setItem(PLAYING_KEY, 'true')
+    else if (yt.status === 'paused') localStorage.setItem(PLAYING_KEY, 'false')
+  }, [yt.status])
 
   // The static stops once the new station is playing (or has failed).
   useEffect(() => {
@@ -756,9 +773,17 @@ export default function App() {
   useEffect(() => {
     layers.current = { wheel: wheelLayer, settingsOpen, drive, details, expanded }
   })
+  const justLoaded = useRef(true)
   useEffect(() => {
+    const atLoad = justLoaded.current
+    justLoaded.current = false
     if (anyLayer && !window.history.state?.layer) window.history.pushState({ layer: true }, '')
-    else if (!anyLayer && window.history.state?.layer) window.history.back()
+    else if (!anyLayer && window.history.state?.layer) {
+      // An entry left from before a reload has nothing under it in this page: going back from it
+      // would load the app a second time, so it just becomes a plain entry.
+      if (atLoad) window.history.replaceState(null, '')
+      else window.history.back()
+    }
   }, [anyLayer])
   useEffect(() => {
     const onPop = () => {
@@ -925,7 +950,7 @@ export default function App() {
     <div className="app">
       <div ref={hostRef} className={`audio-host ${details && isCurrentLoaded ? 'audio-host--video' : ''}`} aria-hidden="true" />
 
-      <main className="main" style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer}>
+      <main ref={mainRef} className="main" style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer}>
         <header className="main-header">
           {searching ? (
             <div className="search-bar">
@@ -975,6 +1000,8 @@ export default function App() {
             </div>
           )}
         </header>
+        {/* A search already narrows the page down: the band is for the whole catalogue. */}
+        {!q && <GameBand games={shownGames} scroller={mainRef} />}
         {!q && favs.length > 0 && (
           <Shelf title="Tes favoris" count={byIds(favs).length}>
             {byIds(favs).map(renderCard)}
@@ -985,11 +1012,10 @@ export default function App() {
             {byIds(recent).map(renderCard)}
           </Shelf>
         )}
-        {GAMES.map((g) => {
+        {shownGames.map((g) => {
           const list = visible.filter((st) => st.game === g.id)
-          if (!list.length) return null
           return (
-            <Shelf key={g.id} title={g.name} count={list.length}>
+            <Shelf key={g.id} id={`jeu-${g.id}`} title={g.name} count={list.length}>
               {list.map(renderCard)}
             </Shelf>
           )
@@ -1043,7 +1069,7 @@ export default function App() {
       {/* The listening screen: the station's sign in the night, and the dash under it. */}
       {expanded && current && (
         <div
-          className={`sheet ${isCurrentLoaded && yt.status === 'playing' ? 'is-playing' : ''} ${tuning ? 'is-tuning' : ''}`}
+          className={`sheet ${expanded === 'restored' ? 'sheet--restored' : ''} ${isCurrentLoaded && yt.status === 'playing' ? 'is-playing' : ''} ${tuning ? 'is-tuning' : ''}`}
           style={{ '--accent': current.color }}
           inert={details || wheelLayer || settingsOpen}
           {...sheetSwipe}
