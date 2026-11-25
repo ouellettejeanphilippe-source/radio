@@ -278,7 +278,7 @@ function Lastfm({ settings }) {
   )
 }
 
-export default function Settings({ count, total, live, onLive, lastStatus, onClose }) {
+export default function Settings({ count, total, live, onLive, controls, onControls, skipSongs, onSkipSongs, lastStatus, onClose }) {
   const settings = useScrobbleSettings()
   return (
     <div className="wheel-backdrop" onClick={onClose}>
@@ -299,6 +299,28 @@ export default function Settings({ count, total, live, onLive, lastStatus, onClo
               </span>
             </span>
             <input type="checkbox" role="switch" className="switch" checked={live} onChange={(e) => onLive(e.target.checked)} />
+          </label>
+        </section>
+        <section>
+          <label className="switch-row">
+            <span>
+              <b>Commandes du téléphone</b>
+              <span className="scrobble-help">
+                Le poste, la chanson et le logo s'affichent sur l'écran verrouillé, dans la notification, dans l'auto et dans les lanceurs comme AutoZen,
+                et leurs touches commandent la radio. Pour ça, l'app joue une piste de silence à côté de YouTube&nbsp;: désactive-le si le son coupe.
+              </span>
+            </span>
+            <input type="checkbox" role="switch" className="switch" checked={controls} onChange={(e) => onControls(e.target.checked)} />
+          </label>
+          <label className="switch-row">
+            <span>
+              <b>Précédent et suivant changent de chanson</b>
+              <span className="scrobble-help">
+                Sur les postes dont on a la liste des chansons ({count} sur {total}). Ailleurs, et quand c'est désactivé, ces touches changent de
+                poste.
+              </span>
+            </span>
+            <input type="checkbox" role="switch" className="switch" checked={skipSongs} onChange={(e) => onSkipSongs(e.target.checked)} />
           </label>
         </section>
         <section>

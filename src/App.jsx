@@ -8,6 +8,7 @@ import META from './meta.json'
 import { countScrobblable, finishLastfmLogin, parseSong, scrobblingOn, useScrobbler, useScrobbleSettings } from './scrobble.js'
 import Settings from './Settings.jsx'
 import GameBand from './GameBand.jsx'
+import { holdSession, mediaKey, sessionByDefault, tile } from './session.js'
 import ConfirmButton from './Confirm.jsx'
 import { startSync, useSync } from './sync.js'
 
@@ -20,6 +21,12 @@ const LIVE_KEY = 'radio:live'
 const KNOWS_WHEEL_KEY = 'radio:knows-wheel'
 // On this device: whether a station was playing when the app was last left.
 const PLAYING_KEY = 'radio:playing'
+// On this device: whether the app takes the phone's media controls, and whether their previous /
+// next keys go from song to song instead of from station to station.
+const CONTROLS_KEY = 'radio:controls'
+const SKIP_SONGS_KEY = 'radio:skip-songs'
+// The app icon's "Mode auto" shortcut opens with ?auto (see the manifest).
+const LAUNCH_IN_CAR = new URLSearchParams(window.location.search).has('auto')
 
 function readJson(key, fallback) {
   try {
@@ -507,7 +514,7 @@ export default function App() {
   // The listening screen. 'restored' when the app opens on it because a station was playing at the
   // last visit: it is then already there, instead of sliding up, and one touch on play resumes.
   const [expanded, setExpanded] = useState(() => {
-    const id = readJson(PLAYING_KEY, false) && !readJson(DRIVE_KEY, false) && readJson(CURRENT_KEY, null)
+    const id = readJson(PLAYING_KEY, false) && !LAUNCH_IN_CAR && !readJson(DRIVE_KEY, false) && readJson(CURRENT_KEY, null)
     return STATIONS_PLAYABLE.some((st) => st.id === id) ? 'restored' : false
   })
   const [details, setDetails] = useState(false)
@@ -517,7 +524,11 @@ export default function App() {
   const [dragX, setDragX] = useState(0)
   const [favs, setFavs] = useState(() => readJson(FAVS_KEY, []))
   const [recent, setRecent] = useState(() => readJson(RECENT_KEY, []))
-  const [drive, setDrive] = useState(() => readJson(DRIVE_KEY, false))
+  const [drive, setDrive] = useState(() => LAUNCH_IN_CAR || readJson(DRIVE_KEY, false))
+  const [controls, setControls] = useState(() => readJson(CONTROLS_KEY, sessionByDefault))
+  const [skipSongs, setSkipSongs] = useState(() => readJson(SKIP_SONGS_KEY, false))
+  // The current station's tile, drawn for the lock screen: { id, url }.
+  const [art, setArt] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [scrobbleError, setScrobbleError] = useState(null)
   // Whether a held finger has already tuned a station on this device: the hint can then go.
@@ -542,6 +553,9 @@ export default function App() {
   const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
   const modeInfo = MODES.find((m) => m.id === mode) ?? MODES[0]
+  // The line of the list of songs that is playing, and its title.
+  const trackNow = isCurrentLoaded ? trackIndex(current.tracks, yt.time.current) : -1
+  const song = trackNow >= 0 ? current.tracks[trackNow][1] : null
 
   useEffect(() => {
     localStorage.setItem(CURRENT_KEY, JSON.stringify(currentId))
@@ -561,6 +575,16 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(DRIVE_KEY, JSON.stringify(drive))
   }, [drive])
+  useEffect(() => {
+    localStorage.setItem(CONTROLS_KEY, JSON.stringify(controls))
+  }, [controls])
+  useEffect(() => {
+    localStorage.setItem(SKIP_SONGS_KEY, JSON.stringify(skipSongs))
+  }, [skipSongs])
+  // The shortcut has done its job: a reload shouldn't force the car screen again.
+  useEffect(() => {
+    if (LAUNCH_IN_CAR) window.history.replaceState(window.history.state, '', window.location.pathname + window.location.hash)
+  }, [])
 
   // Remembered for the next visit. A pause counts as having stopped; a station that fails or an
   // app that is closed while it plays doesn't.
@@ -578,6 +602,7 @@ export default function App() {
   }, [yt.status])
 
   function tune(st) {
+    if (controls) holdSession(true)
     stopStatic.current?.()
     stopStatic.current = startStatic(yt.volume)
     setCurrentId(st.id)
@@ -622,6 +647,36 @@ export default function App() {
     const i = list.findIndex((st) => st.id === currentId)
     playStation(list[(i + dir + list.length) % list.length])
   }
+
+  // --- The phone's keys (lock screen, notification, car, assistant, launchers like AutoZen) ---
+
+  function setPlaying(want) {
+    if (!current) return want && stations[0] && playStation(stations[0])
+    if (!isCurrentLoaded) return want && tune(current)
+    if (want !== isPlaying) yt.toggle()
+  }
+
+  // Previous / next. They change station, like the swipe. With the setting on and a known list of
+  // songs, they go from song to song instead: next to the following song, previous to the start
+  // of this one, or to the one before when it has just begun.
+  function skip(dir) {
+    const list = isCurrentLoaded && skipSongs && !live && current.tracks
+    if (!list) return step(dir)
+    const songs = list.map((_, i) => i).filter((i) => current.songs[i])
+    if (!songs.length) return step(dir)
+    let to
+    if (dir > 0) to = songs.find((i) => i > trackNow) ?? songs[0]
+    else if (current.songs[trackNow] && yt.time.current - list[trackNow][0] > 5) to = trackNow
+    else to = songs.findLast((i) => i < trackNow) ?? songs[songs.length - 1]
+    yt.seek(list[to][0])
+  }
+
+  // Rewind / fast-forward, and the notification's own seek bar. A broadcast can't be moved.
+  function seekTo(t) {
+    if (!isCurrentLoaded || live || !(yt.time.duration > 0) || !(t >= 0)) return
+    yt.seek(Math.min(t, yt.time.duration - 1))
+  }
+  const nudge = (by) => seekTo(Math.max(0, yt.time.current + by))
 
   function closeSearch() {
     setQuery('')
@@ -710,7 +765,7 @@ export default function App() {
 
   const actions = useRef({})
   useEffect(() => {
-    actions.current = { togglePlay, step, closeTop, closeWheel, turnWheel, holdStart, holdMove, holdEnd, holdToTap, wheel, loaded: () => loadedId != null }
+    actions.current = { togglePlay, setPlaying, skip, nudge, seekTo, closeTop, closeWheel, turnWheel, holdStart, holdMove, holdEnd, holdToTap, wheel, loaded: () => loadedId != null }
   })
 
   useEffect(() => {
@@ -747,12 +802,11 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('blur', onBlur)
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.setActionHandler('play', () => actions.current.togglePlay())
-      navigator.mediaSession.setActionHandler('pause', () => actions.current.togglePlay())
-      navigator.mediaSession.setActionHandler('previoustrack', () => actions.current.step(-1))
-      navigator.mediaSession.setActionHandler('nexttrack', () => actions.current.step(1))
-    }
+    mediaKey('play', () => actions.current.setPlaying(true))
+    mediaKey('pause', () => actions.current.setPlaying(false))
+    mediaKey('stop', () => actions.current.setPlaying(false))
+    mediaKey('previoustrack', () => actions.current.skip(-1))
+    mediaKey('nexttrack', () => actions.current.skip(1))
     return () => {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('keyup', onKeyUp)
@@ -802,8 +856,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
-  const trackNow = isCurrentLoaded ? trackIndex(current.tracks, yt.time.current) : -1
-  const song = trackNow >= 0 ? current.tracks[trackNow][1] : null
   const failed = isCurrentLoaded && yt.status === 'error'
   const { status: scrobbleStatus, last: lastScrobble } = useScrobbler({
     videoId: isCurrentLoaded ? current.videoId : null,
@@ -840,18 +892,59 @@ export default function App() {
   }, [])
   const isFav = Boolean(current && favs.includes(current.id))
 
+  // The station's tile for the lock screen, drawn once per station.
+  useEffect(() => {
+    if (!current) return
+    let stale = false
+    tile(current).then((url) => !stale && setArt(url && { id: current.id, url }))
+    return () => {
+      stale = true
+    }
+  }, [current])
+
   useEffect(() => {
     if (!current) return
     document.title = `${current.name} · Radio`
     if (!('mediaSession' in navigator)) return
-    // Lock screen / car display: the song when known, otherwise the station.
+    // Lock screen, notification, car display: the song when known, otherwise the station. The
+    // video's thumbnail stands in until the tile is drawn, and for stations without a logo.
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song || current.name,
       artist: song ? current.name : current.dj || gameLabel(current.game),
       album: gameLabel(current.game),
-      artwork: [{ src: current.logo || `https://i.ytimg.com/vi/${current.videoId}/hqdefault.jpg` }],
+      artwork:
+        art?.id === current.id
+          ? [{ src: art.url, sizes: '512x512', type: 'image/png' }]
+          : [{ src: `https://i.ytimg.com/vi/${current.videoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }],
     })
-  }, [current, song])
+  }, [current, song, art])
+
+  // Playing or paused, as the phone should show it; and the silent track that keeps the phone's
+  // controls with the app rather than with YouTube's player (see session.js).
+  const sounding = isCurrentLoaded && isPlaying
+  useEffect(() => {
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = !isCurrentLoaded ? 'none' : sounding ? 'playing' : 'paused'
+    holdSession(controls && sounding)
+  }, [controls, isCurrentLoaded, sounding])
+
+  // Where the recording is, for the notification's progress bar.
+  useEffect(() => {
+    if (!navigator.mediaSession?.setPositionState) return
+    try {
+      if (isCurrentLoaded && yt.time.duration > 0) {
+        navigator.mediaSession.setPositionState({ duration: yt.time.duration, position: Math.min(yt.time.current, yt.time.duration), playbackRate: 1 })
+      } else navigator.mediaSession.setPositionState()
+    } catch {
+      // A position the browser won't take; the bar just stays where it was.
+    }
+  }, [isCurrentLoaded, yt.time])
+
+  // No rewinding a broadcast: in live mode the phone doesn't offer it.
+  useEffect(() => {
+    mediaKey('seekbackward', live ? null : (e) => actions.current.nudge(-(e.seekOffset || 30)))
+    mediaKey('seekforward', live ? null : (e) => actions.current.nudge(e.seekOffset || 30))
+    mediaKey('seekto', live ? null : (e) => actions.current.seekTo(e.seekTime))
+  }, [live])
 
   const miniSwipe = useSwipe({
     onMove: (s) => setDragX(s.axis === 'x' ? s.dx : 0),
@@ -1219,6 +1312,10 @@ export default function App() {
           total={stations.length}
           live={live}
           onLive={changeLive}
+          controls={controls}
+          onControls={setControls}
+          skipSongs={skipSongs}
+          onSkipSongs={setSkipSongs}
           lastStatus={scrobbleError ? { state: 'error', error: scrobbleError } : lastScrobble}
           onClose={closeSettings}
         />

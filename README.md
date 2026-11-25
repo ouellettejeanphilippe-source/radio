@@ -20,6 +20,17 @@ Le repo contient l'interface et la liste des stations, sans audio ni logos de je
 - Chaque station indique ce qu'il y a dans l'enregistrement : DJ + pubs, DJ, musique seulement ou talk-show. Quand on a la liste des chansons avec les minutages, l'app affiche la chanson en cours (aussi sur l'écran verrouillé), la suivante et la liste complète. Ces infos viennent de `src/meta.json`, généré par `node scripts/meta.mjs` à partir des descriptions YouTube. Quand la description n'a pas de minutages (c'est le cas de la plupart des GTA), on peut coller une liste minutée, souvent trouvée dans un commentaire sous la vidéo, dans `scripts/tracklists/<id de la vidéo>.txt`.
 - Si le navigateur met la lecture en pause en passant en arrière-plan, l'app la relance (utile en auto avec le GPS ouvert ; activer la lecture en arrière-plan dans Vivaldi/Brave ou utiliser Firefox).
 
+## Android, l'auto et l'écran verrouillé
+
+L'app donne à Android le poste, la chanson en cours, le logo et la position dans l'enregistrement, et répond aux touches du téléphone. Tout ce qui passe par le lecteur actif d'Android s'en sert : l'écran verrouillé, la notification, les boutons du volant ou d'un casque, l'assistant vocal (« suivant », « pause ») et les lanceurs d'auto comme AutoZen.
+
+- Précédent et suivant changent de poste, selon le mode de glissement. Le réglage « Précédent et suivant changent de chanson » les fait passer d'une chanson à l'autre sur les postes dont on a la liste; précédent revient alors au début de la chanson, ou à celle d'avant si elle vient de commencer.
+- Recul et avance déplacent de 30 s, et la barre de la notification déplace l'aiguille. En écoute en direct, ni l'un ni l'autre n'est offert.
+- Le son vient du lecteur YouTube, dans son propre cadre, et c'est normalement à lui qu'Android confie les commandes : on verrait le titre de la vidéo, sans pouvoir changer de poste. Pour les garder, l'app joue une piste de silence à côté (`src/session.js`). Ça se désactive dans « Réglages » (« Commandes du téléphone ») si le son coupe; c'est désactivé au départ sur iPhone, où ça n'a pas été essayé.
+- Le logo est redessiné en PNG sur la tuile du poste, parce que la notification n'affiche pas les SVG du wiki.
+- Installée depuis le navigateur, l'app a un raccourci « Mode auto » (appui long sur son icône).
+- La lecture en arrière-plan dépend encore du navigateur, comme indiqué plus haut.
+
 ## Synchro entre appareils
 
 La synchro s'active dans « Réglages » (roue dentée en haut de l'accueil). L'app garde alors les favoris, les récents, le mode de glissement, l'écoute en direct, la station en cours et les bouts déjà entendus dans un gist secret du compte GitHub de l'utilisateur (`src/sync.js`), sans serveur.
@@ -27,7 +38,7 @@ La synchro s'active dans « Réglages » (roue dentée en haut de l'accueil). L'
 - Premier appareil : un lien ouvre la création d'un jeton GitHub avec seulement la permission `gist` ; on choisit « No expiration », on colle le jeton, et l'app trouve ou crée le gist.
 - Autres appareils : « Ajouter un autre appareil » montre un code QR / lien (`#sync=…`, qui contient le jeton) ; l'ouvrir suffit.
 - Synchro à l'ouverture, au retour sur l'onglet, en quittant, toutes les 5 min, et 20 s après un changement. L'app combine les bouts entendus ; pour le reste, le changement le plus récent gagne.
-- Restent propres à chaque appareil : volume, mode auto, connexions de scrobbling.
+- Restent propres à chaque appareil : volume, mode auto, commandes du téléphone, connexions de scrobbling.
 
 ## Scrobbling (ListenBrainz, Last.fm)
 
