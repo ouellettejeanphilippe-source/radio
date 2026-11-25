@@ -1,14 +1,23 @@
 :root {
-  --bg: #000;
-  --panel: #101010;
-  --card-hover: #1f1f1f;
-  --text: #fff;
-  --muted: #a8a8a8;
-  --green: #5fd35f;
+  /* A dashboard at night: an asphalt ground, a dash and its keys, wells for what reads back,
+     backlit legends, one amber dial and its red needle. The station colours do the rest. */
+  --asphalt: #0b0c0e;
+  --dash: #15171a;
+  --key: #1f2226;
+  --key-lit: #2b2f34;
+  --well: #060708;
+  --bezel: rgba(255, 255, 255, 0.08);
+  --bezel-strong: rgba(255, 255, 255, 0.16);
+  --legend: #f4f0e6;
+  --legend-2: #b8b4ab;
+  --legend-3: #85827b;
+  --dial: #ffb02e;
+  --dial-ink: #1b1204;
+  --needle: #ff4a3d;
   --display: 'Pricedown Bl', 'Impact', 'Arial Black', sans-serif;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  color: var(--text);
-  background: var(--bg);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--legend);
+  background: var(--asphalt);
   color-scheme: dark;
 }
 
@@ -46,7 +55,7 @@ label {
 }
 /* Keyboard focus: the same ring on every control. */
 :focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--dial);
   outline-offset: 2px;
 }
 /* Every control answers a press. */
@@ -73,7 +82,7 @@ label {
   transform: scale(0.96);
 }
 
-/* GTA-style display type: Pricedown with a hard black outline. */
+/* GTA-style display type. The hard black outline stays where a name sits on a station's colour. */
 .display,
 .mobile-brand > h1,
 .shelf h2,
@@ -82,6 +91,10 @@ label {
   font-family: var(--display);
   font-weight: 900;
   letter-spacing: 1px;
+}
+.mobile-brand > h1,
+.sheet-title,
+.wheel-name {
   -webkit-text-stroke: 1.5px #000;
   paint-order: stroke fill;
   text-shadow: 2px 3px 0 #000;
@@ -93,9 +106,9 @@ label {
   inset: 0;
   overflow: auto;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 40%, transparent) 0, transparent 340px),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 6px),
-    var(--panel);
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 36%, transparent) 0, transparent 320px),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 2px, transparent 2px 6px),
+    var(--asphalt);
   transition: background 0.6s;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -120,41 +133,78 @@ label {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-  color: var(--green);
+  height: 44px;
+  color: var(--dial);
 }
 .mobile-brand > h1 {
-  margin: 0;
+  margin: 0 auto 0 0;
   font-size: 34px;
-  color: var(--text);
+  color: var(--legend);
 }
 .search {
-  width: 100%;
-  padding: 11px 14px;
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background: #fff;
-  color: #000;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--legend);
   font: inherit;
   font-size: 16px;
   outline: none;
 }
-.search:focus-visible {
-  border-color: var(--green);
+.search::placeholder {
+  color: var(--legend-3);
+}
+/* The bar has its own close key. */
+.search::-webkit-search-cancel-button {
+  display: none;
+}
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+}
+/* A well, darker than the dash around it: it receives what you type. */
+.search-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  background: var(--well);
+  border: 1px solid var(--bezel-strong);
+  color: var(--legend-3);
+  cursor: text;
+}
+.search-field:focus-within {
+  border-color: var(--dial);
+  color: var(--dial);
 }
 .shelf-head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 20px 16px 10px;
+  align-items: baseline;
+  gap: 10px;
+  margin: 24px 16px 12px;
 }
 .shelf h2 {
-  font-size: 30px;
+  font-size: 26px;
+  line-height: 1.1;
   margin: 0;
+}
+.shelf-count {
+  color: var(--legend-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .shelf-arrows {
   display: none;
   gap: 4px;
+  margin-left: auto;
+  align-self: center;
 }
 .shelf .row {
   display: flex;
@@ -180,7 +230,7 @@ label {
   outline: none;
 }
 .card:focus-visible .cover {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--dial);
   outline-offset: -2px;
 }
 .card-cover {
@@ -189,18 +239,22 @@ label {
 }
 .card-title {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .card.active .card-title {
-  color: var(--green);
+  color: var(--dial);
+}
+.card.active .cover {
+  outline: 2px solid var(--dial);
+  outline-offset: -2px;
 }
 .card-sub {
   margin-top: 3px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--legend-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -213,10 +267,10 @@ label {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--green);
-  color: #000;
+  background: var(--dial);
+  color: var(--dial-ink);
   place-items: center;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   opacity: 0;
   transform: translateY(8px);
   transition:
@@ -235,10 +289,10 @@ label {
   bottom: -5px;
   height: 3px;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--green) var(--pct), rgba(255, 255, 255, 0.15) var(--pct));
+  background: linear-gradient(90deg, var(--dial) var(--pct), var(--bezel-strong) var(--pct));
 }
 .empty {
-  color: var(--muted);
+  color: var(--legend-2);
   padding: 8px 24px;
 }
 .empty .btn-link {
@@ -248,42 +302,26 @@ label {
 /* What the recording holds: DJ + ads, DJ, music only, talk */
 .badge {
   display: inline-block;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 1.4;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
   white-space: nowrap;
-  vertical-align: 1px;
-  color: #000;
-  background: var(--green);
-}
-.badge--dj {
-  background: #f5c542;
-}
-.badge--music {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.22);
-}
-.badge--talk {
-  background: #74b9ff;
+  color: var(--legend);
+  background: rgba(6, 7, 8, 0.72);
+  border: 1px solid var(--bezel-strong);
 }
 .card-cover .badge {
   position: absolute;
   left: 6px;
   top: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-}
-.card-cover .badge--music {
-  background: rgba(0, 0, 0, 0.6);
 }
 .song {
   margin-top: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--green);
+  color: var(--dial);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -291,25 +329,26 @@ label {
 .fav.on,
 .fav.on:hover:not(:disabled),
 .drive-fav.on {
-  color: var(--green);
+  color: var(--dial);
 }
 .drive-open {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-left: auto;
-  padding: 7px 12px;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 14px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  background: var(--key);
+  border: 1px solid var(--bezel);
+  color: var(--legend);
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
 }
 .drive-open:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--key-lit);
 }
 
 /* Car mode */
@@ -322,7 +361,7 @@ label {
   justify-items: center;
   gap: 16px;
   padding: calc(12px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
-  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--accent) 45%, #0c0c0c) 0, #050505 75%);
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--accent) 45%, var(--asphalt)) 0, #050506 75%);
   transition: background 0.6s;
   touch-action: none;
   user-select: none;
@@ -335,18 +374,19 @@ label {
   justify-content: space-between;
 }
 .drive-top .ctrl {
-  color: var(--text);
+  color: var(--legend);
 }
 .drive-close {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px 10px 8px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.12);
-  font-weight: 800;
-  text-transform: uppercase;
-  font-size: 13px;
+  height: 44px;
+  padding: 0 16px 0 10px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--bezel);
+  font-size: 14px;
+  font-weight: 600;
 }
 .drive-art {
   align-self: center;
@@ -385,14 +425,14 @@ label {
   margin-top: 10px;
   font-size: 18px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--legend-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .drive-song.is-error,
 .player-sub.is-error {
-  color: #f15e6c;
+  color: var(--needle);
 }
 .drive-controls {
   width: min(100%, 520px);
@@ -406,19 +446,22 @@ label {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--bezel-strong);
 }
 .drive-btn:active {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.22);
 }
+/* The one lit key is amber, not white: no glare in the car at night. */
 .drive-btn--main {
   width: 128px;
   height: 128px;
-  background: #fff;
-  color: #000;
+  background: var(--dial);
+  border-color: transparent;
+  color: var(--dial-ink);
 }
 .drive-btn--main:active {
-  background: #ddd;
+  background: #e89c1f;
 }
 /* Phone on a car mount, sideways: logo on the left, the rest on the right. */
 @media (orientation: landscape) and (max-height: 600px) {
@@ -458,9 +501,11 @@ label {
   display: block;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  outline: 1px solid var(--bezel);
+  outline-offset: -1px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 .cover img {
   display: block;
@@ -472,7 +517,7 @@ label {
 }
 .cover--logo {
   background:
-    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 55%, #1a1a1a) 0, #0c0c0c 78%);
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 52%, var(--dash)) 0, var(--well) 80%);
 }
 .cover--logo img {
   object-fit: contain;
@@ -498,55 +543,22 @@ label {
   font-size: 20px;
 }
 
-.heard {
-  margin-top: 16px;
-  padding: 14px 16px;
-  background: #1c1c1c;
-  border-radius: 6px;
-  font-size: 13px;
-}
-.heard-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.heard-bar {
-  position: relative;
-  height: 8px;
-  border-radius: 2px;
-  background: #3a3a3a;
-  overflow: hidden;
-}
-.heard-bar span {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  background: var(--green);
-}
-.heard-bar i {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: #fff;
-}
 .btn-link {
-  color: var(--muted);
+  color: var(--legend-2);
   font-size: 12px;
   text-decoration: underline;
+  text-underline-offset: 2px;
   flex: none;
 }
 .btn-link:hover {
-  color: var(--text);
+  color: var(--legend);
 }
 .btn-link.armed {
-  color: #f15e6c;
+  color: var(--needle);
   font-weight: 700;
 }
 .error {
-  color: #f15e6c;
+  color: var(--needle);
   font-size: 13px;
 }
 
@@ -558,14 +570,15 @@ label {
   bottom: calc(8px + env(safe-area-inset-bottom));
   max-width: 760px;
   margin: 0 auto;
-  height: 62px;
+  height: 68px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px 6px 6px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 45%, #121212);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  padding: 7px 10px 13px 7px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 26%, var(--dash));
+  border: 1px solid var(--bezel-strong);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
   overflow: hidden;
   z-index: 5;
   touch-action: pan-y;
@@ -590,7 +603,7 @@ label {
   transition: none;
 }
 .player-left .cover--small {
-  width: 50px;
+  width: 46px;
 }
 .player-mini-play,
 .player-step {
@@ -600,35 +613,75 @@ label {
   height: 44px;
   flex: none;
 }
+.player-mini-play {
+  border-radius: 50%;
+  background: var(--dial);
+  color: var(--dial-ink);
+}
 .player-step {
   display: none;
-  color: var(--muted);
+  color: var(--legend-2);
 }
 .player-step:hover {
-  color: var(--text);
+  color: var(--legend);
 }
-.player-line {
+/* The dial under the display: ticks lit up to the needle. */
+.player-dial {
   position: absolute;
-  left: 8px;
-  right: 8px;
+  left: 12px;
+  right: 12px;
+  bottom: 4px;
+  height: 6px;
+}
+.player-dial::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--dial) var(--pct), rgba(255, 255, 255, 0.22) var(--pct));
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 6px);
+  mask: repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 6px);
+}
+.player-dial i {
+  position: absolute;
+  inset: -2px 0 -1px;
+  transform: translateX(var(--pct));
+}
+.player-dial i::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
   bottom: 0;
-  height: 2px;
+  width: 2px;
   border-radius: 1px;
-  background: linear-gradient(90deg, #fff var(--pct), rgba(255, 255, 255, 0.25) var(--pct));
+  background: var(--needle);
+  box-shadow: 0 0 6px var(--needle);
+}
+/* Tuning in: the needle sweeps the band until the station plays, like the static you hear. */
+.player.is-tuning .player-dial i {
+  animation: sweep 1.1s ease-in-out infinite alternate;
+}
+@keyframes sweep {
+  from {
+    transform: translateX(2%);
+  }
+  to {
+    transform: translateX(98%);
+  }
 }
 .player-left > div {
   min-width: 0;
 }
 .player-title {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .player-sub {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--legend-2);
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -640,12 +693,12 @@ label {
   gap: 22px;
 }
 .ctrl {
-  color: var(--muted);
+  color: var(--legend-2);
   display: grid;
   place-items: center;
 }
 .ctrl:hover:not(:disabled) {
-  color: var(--text);
+  color: var(--legend);
 }
 .ctrl:disabled {
   opacity: 0.35;
@@ -654,11 +707,11 @@ label {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: #fff;
-  color: #000;
+  background: var(--dial);
+  color: var(--dial-ink);
 }
 .ctrl--main:hover:not(:disabled) {
-  color: #000;
+  color: var(--dial-ink);
   transform: scale(1.06);
 }
 .ctrl--main:active:not(:disabled) {
@@ -669,26 +722,8 @@ label {
   min-width: 64px;
 }
 .ctrl--mode small {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-.progress {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.progress span {
-  min-width: 52px;
-  text-align: center;
-}
-.progress input {
-  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
 }
 .volume {
   display: none;
@@ -704,12 +739,12 @@ input[type='range'] {
   appearance: none;
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(90deg, #fff var(--pct, 0%), #4d4d4d var(--pct, 0%));
+  background: linear-gradient(90deg, var(--legend) var(--pct, 0%), var(--key-lit) var(--pct, 0%));
   cursor: pointer;
   margin: 0;
 }
 input[type='range']:hover:not(:disabled) {
-  background-image: linear-gradient(90deg, var(--green) var(--pct, 0%), #4d4d4d var(--pct, 0%));
+  background-image: linear-gradient(90deg, var(--dial) var(--pct, 0%), var(--key-lit) var(--pct, 0%));
 }
 input[type='range']::-webkit-slider-thumb {
   appearance: none;
@@ -731,6 +766,83 @@ input[type='range']::-moz-range-thumb {
 }
 input[type='range']:disabled {
   cursor: default;
+}
+
+/* The dial: a tuner band. The needle is the seek thumb; the lit stretches are what you've heard. */
+/* In the full player it sits with the controls at the bottom, where the thumb is. */
+.dial {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 16px;
+}
+.dial-band {
+  position: relative;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--bezel-strong);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.34) 0 1px, transparent 1px 10%) 0 100% / 100% 13px no-repeat,
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 2%) 0 100% / 100% 7px no-repeat,
+    var(--well);
+}
+.dial-band span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--dial) 62%, transparent), color-mix(in srgb, var(--dial) 20%, transparent));
+  box-shadow: inset 0 2px 0 var(--dial);
+}
+.dial-band input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: none;
+}
+.dial-band input:hover:not(:disabled) {
+  background-image: none;
+}
+.dial-band input:focus-visible {
+  outline-offset: -2px;
+}
+.dial-band input::-webkit-slider-thumb {
+  width: 3px;
+  height: 40px;
+  border-radius: 1px;
+  background: var(--needle);
+  box-shadow: 0 0 8px var(--needle);
+  opacity: 1;
+}
+.dial-band input::-moz-range-thumb {
+  width: 3px;
+  height: 40px;
+  border-radius: 1px;
+  background: var(--needle);
+  box-shadow: 0 0 8px var(--needle);
+}
+.dial-band input::-moz-range-track {
+  background: none;
+}
+.dial-band input:disabled {
+  opacity: 0.35;
+}
+.dial-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--legend-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.dial-heard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--legend-3);
 }
 
 /* The YouTube player: invisible (audio only) unless the full player is open.
@@ -768,7 +880,7 @@ input[type='range']:disabled {
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 60%, #0c0c0c) 0, #0c0c0c 75%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 55%, var(--asphalt)) 0, var(--asphalt) 72%);
   animation: sheet-up 0.28s ease-out;
   overflow: hidden;
   touch-action: none;
@@ -790,13 +902,12 @@ input[type='range']:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  color: var(--legend-2);
+  font-size: 13px;
+  font-weight: 600;
 }
 .sheet-top .ctrl {
-  color: var(--text);
+  color: var(--legend);
 }
 .sheet-top-actions {
   display: flex;
@@ -823,29 +934,23 @@ input[type='range']:disabled {
   margin-top: 22px;
   text-wrap: balance;
 }
-.sheet-sub {
-  color: var(--muted);
-  margin: 6px 0 18px;
-  font-size: 14px;
+.sheet-host {
+  margin-top: 6px;
+  color: var(--legend-2);
+  font-size: 15px;
 }
-.sheet .progress span {
-  min-width: 0;
-}
-.sheet .progress {
+.chips {
+  display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-}
-.sheet .progress input {
-  flex: 0 0 100%;
-  order: -1;
-  margin-bottom: 6px;
+  gap: 6px;
+  margin: 12px 0 18px;
 }
 .controls--big {
   justify-content: space-between;
-  margin: 14px 0 4px;
+  margin: 18px 0 12px;
 }
 .controls--big .ctrl {
-  color: var(--text);
+  color: var(--legend);
 }
 .controls--big .ctrl svg {
   width: 34px;
@@ -862,10 +967,7 @@ input[type='range']:disabled {
 .controls--big .ctrl--main svg {
   width: 30px;
   height: 30px;
-  color: #000;
-}
-.sheet .heard {
-  background: rgba(0, 0, 0, 0.3);
+  color: var(--dial-ink);
 }
 @keyframes sheet-up {
   from {
@@ -924,8 +1026,8 @@ input[type='range']:disabled {
 }
 .wheel-item.active .cover {
   box-shadow:
-    0 0 0 3px #fff,
-    0 0 18px rgba(255, 255, 255, 0.5);
+    0 0 0 3px var(--dial),
+    0 0 18px color-mix(in srgb, var(--dial) 55%, transparent);
 }
 .wheel-center {
   position: absolute;
@@ -937,11 +1039,9 @@ input[type='range']:disabled {
   pointer-events: none;
 }
 .wheel-title {
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--legend-2);
 }
 .wheel-name {
   font-size: clamp(24px, calc(var(--size) * 0.07), 42px);
@@ -952,7 +1052,7 @@ input[type='range']:disabled {
 .wheel-dj {
   margin-top: 6px;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--legend-2);
 }
 @keyframes fade-in {
   from {
@@ -967,7 +1067,7 @@ input[type='range']:disabled {
 }
 
 /* Narrow phones: the car button keeps its icon only, so the header stays on one line. */
-@media (max-width: 359px) {
+@media (max-width: 379px) {
   .drive-open--icon + .drive-open span {
     display: none;
   }
@@ -997,23 +1097,12 @@ input[type='range']:disabled {
     min-width: 44px;
     min-height: 44px;
   }
-  .heard-head .btn-link {
+  .dial-foot .btn-link {
     margin-block: -14px;
   }
   .scrobble-btn,
   .scrobble-panel input {
     min-height: 44px;
-  }
-  /* The seek bar: same 4px line, 28px to grab, and a thumb that shows without hover. */
-  .sheet .progress input {
-    height: 28px;
-    margin: -12px 0 -6px;
-    background-size: 100% 4px;
-    background-position: center;
-    background-repeat: no-repeat;
-  }
-  .sheet .progress input::-webkit-slider-thumb {
-    opacity: 1;
   }
 }
 
@@ -1055,7 +1144,7 @@ input[type='range']:disabled {
     background: rgba(255, 255, 255, 0.2);
   }
   .drive-btn--main:hover {
-    background: #eee;
+    background: #ffc257;
   }
   .player-mini-play:hover {
     transform: scale(1.08);
@@ -1067,14 +1156,10 @@ input[type='range']:disabled {
 
 /* Scrobbling */
 .drive-open--icon {
-  margin-left: auto;
-  padding: 7px;
-}
-.drive-open--icon + .drive-open {
-  margin-left: 0;
+  padding: 0;
 }
 .drive-open--icon.on {
-  color: var(--green);
+  color: var(--dial);
 }
 .scrobble-panel {
   width: min(440px, calc(100vw - 32px));
@@ -1083,9 +1168,9 @@ input[type='range']:disabled {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 20px;
-  border-radius: 12px;
-  background: var(--panel);
-  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  background: var(--dash);
+  border: 1px solid var(--bezel-strong);
 }
 .scrobble-head {
   display: flex;
@@ -1099,18 +1184,18 @@ input[type='range']:disabled {
 .scrobble-panel section {
   margin-top: 18px;
   padding-top: 14px;
-  border-top: 1px solid #2a2a2a;
+  border-top: 1px solid var(--bezel);
 }
 .scrobble-panel h3 {
   margin: 0 0 8px;
   font-size: 15px;
 }
 .scrobble-panel a {
-  color: var(--green);
+  color: var(--dial);
 }
 .scrobble-help {
   margin: 8px 0;
-  color: var(--muted);
+  color: var(--legend-2);
   font-size: 13px;
   line-height: 1.4;
   text-wrap: pretty;
@@ -1130,11 +1215,11 @@ input[type='range']:disabled {
   flex: 1;
   min-width: 0;
   width: 100%;
-  padding: 9px 12px;
-  border-radius: 4px;
-  border: 1px solid #333;
-  background: #000;
-  color: var(--text);
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--bezel-strong);
+  background: var(--well);
+  color: var(--legend);
   font: inherit;
   font-size: 16px;
 }
@@ -1146,15 +1231,15 @@ input[type='range']:disabled {
 .scrobble-keys label {
   display: grid;
   gap: 4px;
-  color: var(--muted);
+  color: var(--legend-2);
   font-size: 13px;
 }
 .scrobble-btn {
-  padding: 9px 16px;
-  border-radius: 20px;
-  background: var(--green);
-  color: #000;
-  font-weight: 800;
+  padding: 9px 18px;
+  border-radius: 22px;
+  background: var(--dial);
+  color: var(--dial-ink);
+  font-weight: 700;
   font-size: 14px;
 }
 .scrobble-btn:disabled {
@@ -1166,18 +1251,18 @@ input[type='range']:disabled {
 }
 .song-scrobble {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--legend-2);
 }
 .song-scrobble--done {
-  color: var(--green);
+  color: var(--dial);
 }
 .song-scrobble--error {
-  color: #ff6b6b;
+  color: var(--needle);
 }
 .settings-title {
   margin: 22px 0 0;
   padding-top: 16px;
-  border-top: 1px solid #2a2a2a;
+  border-top: 1px solid var(--bezel);
   font-size: 18px;
 }
 .settings-title + .scrobble-help + section {
