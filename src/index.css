@@ -129,96 +129,6 @@ label {
   border-color: var(--dial);
   color: var(--dial);
 }
-/* The band of games, along the bottom of the home screen: the way in to every station, drawn like
-   the tuner band. A series is printed once, its games are the marks; a touch on a mark opens that
-   game's wheel, and the needle sits on the game of the station that is on. */
-.gameband {
-  padding: 0 max(20px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-}
-.gameband-well {
-  height: 44px;
-  border-radius: 8px;
-  border: 1px solid var(--bezel-strong);
-  background: var(--well);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  /* The screen around it doesn't pan; the band does, sideways. */
-  touch-action: pan-x;
-  scrollbar-width: none;
-}
-.gameband-well::-webkit-scrollbar {
-  display: none;
-}
-.gameband-scale {
-  position: relative;
-  display: flex;
-  width: max-content;
-  min-width: 100%;
-  height: 100%;
-  padding: 0 4px;
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 8px) 0 100% / 100% 5px no-repeat;
-}
-.gameband-group {
-  display: flex;
-  align-items: stretch;
-  padding: 0 4px;
-}
-.gameband-group + .gameband-group {
-  border-left: 1px solid var(--bezel);
-}
-.gameband-series,
-.gameband-mark {
-  display: flex;
-  align-items: center;
-  padding-bottom: 6px;
-  white-space: nowrap;
-}
-.gameband-series {
-  padding-left: 8px;
-  padding-right: 4px;
-  color: var(--legend-3);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-.gameband-mark {
-  justify-content: center;
-  min-width: 36px;
-  padding-left: 8px;
-  padding-right: 8px;
-  color: var(--legend-2);
-  font-size: 13px;
-  font-weight: 600;
-  transition:
-    color 0.15s,
-    transform 0.09s ease-out;
-}
-.gameband-mark:active {
-  transform: scale(0.94);
-}
-.gameband-mark[aria-current] {
-  color: var(--legend);
-}
-.gameband-mark:focus-visible {
-  outline-offset: -3px;
-}
-.gameband-needle {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 3px;
-  height: 11px;
-  margin-left: -1.5px;
-  border-radius: 1px;
-  background: var(--needle);
-  box-shadow: 0 0 8px var(--needle);
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 0.2s;
-}
 /* What the recording holds: DJ + ads, DJ, music only, talk */
 .badge {
   display: inline-block;
@@ -671,16 +581,16 @@ input[type='range']:disabled {
 }
 
 /* The home screen is the radio itself: the station's sign out in the night, and next to nothing
-   else. What's on sits in a corner with one key; under it, the dial as a line and the band of
-   games. The emptiness is the point. */
+   else. Its neighbours wait at the edges; what's on sits in a corner with one key, over the dial
+   as a line. The emptiness is the point. */
 .sheet {
   position: fixed;
   inset: 0;
   z-index: 30;
   display: grid;
-  /* One column that can't be pushed wider by the band of games, which scrolls inside itself. */
+  /* One column that can't be pushed wider by the row of stations, which scrolls inside itself. */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   /* The night, lit from where the sign hangs. */
   background:
     radial-gradient(90% 56% at 50% 44%, color-mix(in srgb, var(--accent) 30%, transparent) 0, transparent 100%),
@@ -737,6 +647,22 @@ input[type='range']:disabled {
   color: var(--legend-2);
   white-space: nowrap;
 }
+/* The game's name, top left, opens the game picker. */
+.game-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  height: 44px;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+.game-name svg {
+  flex: none;
+  color: var(--legend-3);
+}
 .sheet-top-actions {
   justify-self: end;
   display: flex;
@@ -757,51 +683,81 @@ input[type='range']:disabled {
   background: var(--needle);
   box-shadow: 0 0 8px var(--needle);
 }
+/* The stage holds the row of stations, which is sized against it. */
 .sheet-stage {
   min-height: 0;
+  container-type: size;
   display: grid;
-  /* A row as tall as the stage, so the sign can be sized against it and never slides under the dash. */
-  grid-template-rows: minmax(0, 1fr);
   place-items: center;
-  padding: 4px 20px 24px;
 }
-.sheet-art {
-  /* Smaller than it could be: the dark around the sign is part of the picture. */
-  height: min(100%, 62vw, 400px);
-  max-width: 100%;
-  aspect-ratio: 1;
-  border-radius: 12px;
+/* The row of stations. The one that is on sits in the middle, a lit sign in the dark; the next
+   ones wait at the edges, small and dim. It scrolls like any list and stops at each station.
+   A slot is narrower than the sign in it: the sign grows past it, and the neighbours stay close
+   enough to show. */
+.stations {
+  --slot: min(46vw, 300px, calc((100cqh - 64px) / 1.34));
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 calc(50% - var(--slot) / 2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  /* The screen around it doesn't pan; the row does, sideways. */
+  touch-action: pan-x;
+  scrollbar-width: none;
+}
+.stations::-webkit-scrollbar {
+  display: none;
+}
+.station {
+  flex: none;
+  width: var(--slot);
+  height: var(--slot);
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  transform: scale(0.52);
+  opacity: 0.3;
   transition:
-    transform 0.25s,
-    opacity 0.25s;
+    transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.24s;
 }
-.sheet-art.dragging {
-  transition: none;
+.station.is-near {
+  transform: scale(1.34);
+  opacity: 1;
 }
-.sheet-art:active:not(.dragging) {
-  transform: scale(0.98);
+.station:focus-visible {
+  outline-offset: -4px;
 }
-/* Nothing chosen yet: the wheel, to be opened. */
-.sheet-art--none {
-  display: grid;
-  place-items: center;
-  color: var(--legend-3);
-}
-.sheet-art .cover {
+.station .cover {
   height: 100%;
   border-radius: 12px;
-  transition: transform 0.2s ease-out;
 }
-/* A logo hangs in the dark like a lit sign, with no tile behind it: its own colour is the halo. */
-.sheet-art .cover--logo {
+/* A logo hangs in the dark like a lit sign, with no tile behind it: its own colour is the halo,
+   once it is the one in the middle. */
+.station .cover--logo {
   background: none;
   outline: 0;
   box-shadow: none;
   overflow: visible;
 }
-.sheet-art .cover--logo img {
+.station .cover--logo img {
   padding: 3%;
-  filter: drop-shadow(0 0 34px color-mix(in srgb, var(--c) 58%, transparent)) drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
+}
+.station.is-near .cover--logo img {
+  filter: drop-shadow(0 0 26px color-mix(in srgb, var(--c) 58%, transparent)) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.6));
+}
+/* Nothing chosen yet: the wheel, as a way in to choosing a game. */
+.sheet-art--none {
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--legend-3);
 }
 
 /* What's on: the station and the song as a caption in the corner, and the play key. */
@@ -912,8 +868,8 @@ input[type='range']:disabled {
 /* The dial, as a line along the bottom: a touch on it opens the details. */
 .sheet-dial {
   position: relative;
-  height: 28px;
-  margin: 0 max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
+  height: 32px;
+  margin: 0 max(20px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(20px, env(safe-area-inset-left));
 }
 .sheet-dial .player-dial {
   left: 0;
@@ -970,21 +926,15 @@ input[type='range']:disabled {
     gap: 4px;
   }
 }
-/* Phone on its side: the sign on the left, the caption on the right, dial and band underneath. */
+/* Phone on its side: the signs on the left, the caption on the right, the dial underneath. */
 @media (orientation: landscape) and (max-height: 559px) {
   .sheet {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
-  }
-  .gameband {
-    grid-column: 1 / -1;
+    grid-template-rows: auto minmax(0, 1fr) auto;
   }
   .sheet > .sheet-top {
     grid-column: 1 / -1;
     height: 44px;
-  }
-  .sheet-stage {
-    padding-bottom: 8px;
   }
   .now {
     align-content: center;
@@ -1040,6 +990,118 @@ input[type='range']:disabled {
 .directory-sub svg {
   flex: none;
   color: var(--dial);
+}
+
+/* Choosing a game, and the favourites: a sheet that comes up from the bottom on a phone, a panel
+   in the middle of the screen on a computer. */
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  align-items: end;
+  background: rgba(0, 0, 0, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: fade-in 0.18s ease-out;
+}
+.picker {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 86vh;
+  max-height: 86dvh;
+  padding: 12px 16px 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--dash);
+  border: 1px solid var(--bezel-strong);
+  border-bottom: 0;
+  animation: sheet-up 0.26s ease-out;
+}
+.picker-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.picker-tabs {
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 320px;
+  margin: 0;
+}
+.picker-head > .ctrl {
+  margin-left: auto;
+  color: var(--legend);
+}
+.picker-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  scrollbar-width: thin;
+  scrollbar-color: var(--key-lit) transparent;
+}
+.picker-body .legend {
+  margin: 20px 0 8px;
+}
+.picker-body .tracks-none {
+  margin-top: 20px;
+}
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+/* A game: a key like the others on the dash, backlit when it is the one that is on. */
+.game-key {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-height: 60px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--key);
+  border: 1px solid var(--bezel);
+  text-align: left;
+  transition: transform 0.09s ease-out;
+}
+.game-key:active {
+  transform: scale(0.97);
+}
+.game-key b {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.game-key small {
+  color: var(--legend-3);
+  font-size: 12px;
+}
+.game-key[aria-current] {
+  background: var(--key-lit);
+  border-color: color-mix(in srgb, var(--dial) 55%, transparent);
+}
+.game-key[aria-current] b {
+  color: var(--dial);
+}
+@media (min-width: 700px) {
+  .picker-backdrop {
+    place-items: center;
+  }
+  .picker {
+    width: min(760px, calc(100vw - 48px));
+    max-height: min(84vh, 720px);
+    padding-top: 16px;
+    border-radius: 16px;
+    border-bottom: 1px solid var(--bezel-strong);
+    animation: fade-in 0.18s ease-out;
+  }
+  .picker-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 /* The details, behind the dial: the video, the list of songs, the full dial, the swipe mode. */
@@ -1359,11 +1421,14 @@ input[type='range']:disabled {
   .mode-key:hover {
     background: var(--key-lit);
   }
-  .gameband-mark:hover {
+  .station:not(.is-near):hover {
+    opacity: 0.6;
+  }
+  .game-name:hover {
     color: var(--legend);
   }
-  .sheet-art:hover .cover {
-    transform: scale(1.02);
+  .game-key:hover {
+    background: var(--key-lit);
   }
   .track:hover:not(:disabled):not(.now) {
     background: color-mix(in srgb, var(--key) 60%, transparent);
