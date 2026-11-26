@@ -1,5 +1,5 @@
-import { useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { ERAS, GAMES, STATIONS } from './stations.js'
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
+import { ERAS, GAMES, SERIES, STATIONS } from './stations.js'
 import { parseYouTubeId, useYouTubePlayer } from './youtube.js'
 import { heardRatio } from './heard.js'
 import { startStatic } from './static.js'
@@ -7,7 +7,6 @@ import { aimAt, wheelLayout } from './wheel.js'
 import META from './meta.json'
 import { countScrobblable, finishLastfmLogin, parseSong, scrobblingOn, useScrobbler, useScrobbleSettings } from './scrobble.js'
 import Settings from './Settings.jsx'
-import GameBand from './GameBand.jsx'
 import { holdSession, mediaKey, sessionByDefault, tile } from './session.js'
 import { newerBuild, reloadFor } from './update.js'
 import ConfirmButton from './Confirm.jsx'
@@ -338,15 +337,16 @@ function useSwipe({ onMove, onEnd, hold }) {
     onTouchStart: (e) => {
       const before = ref.current
       clearTimeout(before?.timer)
-      // A drag on the seek bar moves the playback, and the list of songs and the band of games
-      // scroll: none of them is a swipe. A second finger calls everything off.
-      if (e.touches.length > 1 || e.target.closest('input, .tracks, .gameband')) {
+      // A drag on the seek bar moves the playback and the list of songs scrolls: neither is a
+      // swipe. A second finger calls everything off.
+      if (e.touches.length > 1 || e.target.closest('input, .tracks')) {
         ref.current = null
         if (before?.held) hold.cancel()
         return
       }
       const t = e.touches[0]
-      const s = { x: t.clientX, y: t.clientY, axis: null, dx: 0, dy: 0, held: false }
+      // On the row of stations, the browser does the sideways scrolling itself (`strip`).
+      const s = { x: t.clientX, y: t.clientY, axis: null, dx: 0, dy: 0, held: false, strip: Boolean(e.target.closest('.stations')) }
       if (hold && !e.target.closest(NO_HOLD)) {
         s.timer = setTimeout(() => {
           s.held = true
@@ -537,15 +537,211 @@ function Directory({ stations, currentId, favs, onPick, onClose }) {
   )
 }
 
-// The marks that come before the games on the band, and the wheels they open.
-const EXTRAS = {
-  favs: { id: 'favs', name: 'Favoris', mark: 'Favoris' },
-  recent: { id: 'recent', name: 'Récemment écoutés', mark: 'Récents' },
+// What shows outside the page: the tab's title and, on the lock screen, the notification and a
+// car's display, the song when known, otherwise the station.
+function showOutside(title, media) {
+  document.title = title
+  if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata(media)
+}
+
+// The wheels that aren't a game's.
+const EXTRAS = { favs: 'Favoris', recent: 'Récemment écoutés' }
+
+function shuffle(list) {
+  const out = [...list]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
+// The row of stations across the home screen: the one that is on sits in the middle, full size,
+// and its neighbours wait at the edges, small and dim. It scrolls like any list, one station per
+// swipe, and tunes to the one it comes to rest on. `held` tells when the wheel is held open: the
+// finger that aims on the wheel must not scroll the row underneath.
+function Carousel({ list, currentId, held, onChoose, onOpen, onStep }) {
+  const strip = useRef(null)
+  // The logo nearest the middle while the row moves: it grows before the station changes.
+  const [near, setNear] = useState(currentId)
+  const placed = useRef(false)
+  const ids = list.map((st) => st.id).join(' ')
+  const middle = () => {
+    const el = strip.current
+    const at = el.scrollLeft + el.clientWidth / 2
+    let best = null
+    for (const item of el.children) {
+      const d = Math.abs(item.offsetLeft + item.offsetWidth / 2 - at)
+      if (!best || d < best.d) best = { d, id: item.dataset.id }
+    }
+    return best?.id
+  }
+
+  // The station changed from elsewhere (the wheel, a key, the list): bring it to the middle.
+  useLayoutEffect(() => {
+    const el = strip.current
+    const item = [...el.children].find((x) => x.dataset.id === currentId)
+    if (!item) return
+    setNear(currentId)
+    const left = item.offsetLeft + item.offsetWidth / 2 - el.clientWidth / 2
+    const calm = !placed.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    placed.current = true
+    if (Math.abs(el.scrollLeft - left) > 2) el.scrollTo({ left, behavior: calm ? 'auto' : 'smooth' })
+  }, [currentId, ids])
+
+  const state = useRef({})
+  useEffect(() => {
+    state.current = { currentId, list, held, onChoose, onStep }
+  })
+  useEffect(() => {
+    const el = strip.current
+    let frame = 0
+    let rest = 0
+    const settle = () => {
+      const { currentId, list, held, onChoose } = state.current
+      const id = middle()
+      if (held || !id || id === currentId) return
+      const st = list.find((x) => x.id === id)
+      if (st) onChoose(st)
+    }
+    const onScroll = () => {
+      if (!frame) {
+        frame = requestAnimationFrame(() => {
+          frame = 0
+          setNear(middle())
+        })
+      }
+      clearTimeout(rest)
+      rest = setTimeout(settle, 140)
+    }
+    // A finger that holds the wheel open aims with it: the row stays put.
+    const onTouchMove = (e) => state.current.held && e.cancelable && e.preventDefault()
+    // A mouse wheel has no sideways: a notch is a station.
+    let turned = 0
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      e.preventDefault()
+      if (Date.now() - turned < 260 || Math.abs(e.deltaY) < 8) return
+      turned = Date.now()
+      state.current.onStep(e.deltaY > 0 ? 1 : -1)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('wheel', onWheel)
+      cancelAnimationFrame(frame)
+      clearTimeout(rest)
+    }
+  }, [])
+
+  return (
+    <div ref={strip} className="stations" role="group" aria-label="Postes">
+      {list.map((st) => (
+        <button
+          key={st.id}
+          data-id={st.id}
+          className={`station ${st.id === near ? 'is-near' : ''}`}
+          // The one in the middle opens the wheel; a neighbour comes to the middle.
+          onClick={() => (st.id === currentId ? onOpen() : onChoose(st))}
+          aria-label={st.id === currentId ? `${st.name} : ouvrir la roue des radios` : st.name}
+          aria-current={st.id === currentId ? 'true' : undefined}
+        >
+          <Cover station={st} />
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Choosing a game, and the favourites: a sheet that comes up from the bottom on a phone, a panel
+// in the middle of the screen on a computer.
+function GamePicker({ stations, currentId, favStations, recentStations, onGame, onStation, onClose }) {
+  const [tab, setTab] = useState('games')
+  const current = stations.find((st) => st.id === currentId)
+  // Consecutive games of one series share a heading; the ones without a series follow each other.
+  const groups = []
+  for (const g of GAMES) {
+    const count = stations.filter((st) => st.game === g.id).length
+    if (!count) continue
+    const last = groups[groups.length - 1]
+    if (last && last.series === g.series) last.games.push({ ...g, count })
+    else groups.push({ series: g.series, games: [{ ...g, count }] })
+  }
+  const row = (st) => (
+    <button key={st.id} className={`track ${st.id === currentId ? 'now' : ''}`} onClick={() => onStation(st)} aria-current={st.id === currentId ? 'true' : undefined}>
+      <span className="track-title">{st.name}</span>
+      <span className="directory-sub">{gameLabel(st.game)}</span>
+    </button>
+  )
+  return (
+    <div className="picker-backdrop" onClick={onClose}>
+      <div className="picker" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Choisir un jeu">
+        <div className="picker-head">
+          <div className="modes picker-tabs" role="group" aria-label="Quoi choisir">
+            <button className="mode-key" aria-pressed={tab === 'games'} onClick={() => setTab('games')}>
+              <Icon d={GAMEPAD} size={18} />
+              Jeux
+            </button>
+            <button className="mode-key" aria-pressed={tab === 'favs'} onClick={() => setTab('favs')}>
+              <Icon d={HEART} size={16} />
+              Favoris
+            </button>
+          </div>
+          <button className="ctrl" onClick={onClose} aria-label="Fermer">
+            <Icon d={CLOSE} size={26} />
+          </button>
+        </div>
+        <div className="picker-body">
+          {tab === 'games' &&
+            groups.map((group) => (
+              <section key={group.games[0].id}>
+                {group.series && <h2 className="legend">{SERIES[group.series]}</h2>}
+                <div className="picker-grid">
+                  {group.games.map((g) => (
+                    <button key={g.id} className="game-key" onClick={() => onGame(g.id)} aria-current={current?.game === g.id ? 'true' : undefined}>
+                      <b>{g.name}</b>
+                      <small>
+                        {g.count} poste{g.count > 1 ? 's' : ''} · {eraLabel(g.era)}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          {tab === 'favs' && (
+            <>
+              {favStations.length ? (
+                <section>
+                  <h2 className="legend">Favoris</h2>
+                  {favStations.map(row)}
+                </section>
+              ) : (
+                <p className="tracks-none">Pas encore de favoris. Le cœur à côté du nom d'un poste l'ajoute ici.</p>
+              )}
+              {recentStations.length > 0 && (
+                <section>
+                  <h2 className="legend">Récemment écoutés</h2>
+                  {recentStations.map(row)}
+                </section>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function App() {
   // The list of every station, which is also the search.
   const [searching, setSearching] = useState(false)
+  // The sheet where a game is chosen.
+  const [picking, setPicking] = useState(false)
+  // « Aléatoire » follows one shuffled order per visit, so that going back is going back.
+  const [shuffled] = useState(() => shuffle(STATIONS_PLAYABLE))
   const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
   const [loadedId, setLoadedId] = useState(null)
   const [mode, setMode] = useState(() => readJson(MODE_KEY, 'game'))
@@ -555,7 +751,6 @@ export default function App() {
   // is holding it open.
   const [wheel, setWheel] = useState(null)
   const [lastVolume, setLastVolume] = useState(80)
-  const [dragX, setDragX] = useState(0)
   const [favs, setFavs] = useState(() => readJson(FAVS_KEY, []))
   const [recent, setRecent] = useState(() => readJson(RECENT_KEY, []))
   const [drive, setDrive] = useState(() => LAUNCH_IN_CAR || readJson(DRIVE_KEY, false))
@@ -571,7 +766,6 @@ export default function App() {
   const [knowsWheel, setKnowsWheel] = useState(() => readJson(KNOWS_WHEEL_KEY, false))
   const scrobbleSettings = useScrobbleSettings()
   const { sync } = useSync()
-  const history = useRef([])
   const hostRef = useRef(null)
   const stopStatic = useRef(null)
   const wheelRef = useRef(null)
@@ -584,10 +778,8 @@ export default function App() {
   const byIds = (ids) => ids.map((id) => stations.find((st) => st.id === id)).filter(Boolean)
   const favStations = byIds(favs)
   const recentStations = byIds(recent)
-  // What the wheel can show, in the band's order: favourites and recents when there are any,
-  // then every game.
-  const extras = [favStations.length && EXTRAS.favs, recentStations.length && EXTRAS.recent].filter(Boolean)
-  const wheelPages = [...extras.map((x) => x.id), ...GAME_IDS]
+  // What the wheel can show: favourites and recents when there are any, then every game.
+  const wheelPages = [...(favStations.length ? ['favs'] : []), ...(recentStations.length ? ['recent'] : []), ...GAME_IDS]
   const wheelStations = (page) => (page === 'favs' ? favStations : page === 'recent' ? recentStations : stations.filter((st) => st.game === page))
   const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
@@ -649,7 +841,6 @@ export default function App() {
 
   function playStation(st) {
     if (st.id === loadedId) return yt.toggle()
-    if (current) history.current.push(current.id)
     tune(st)
   }
 
@@ -659,25 +850,30 @@ export default function App() {
     else tune(current)
   }
 
-  // Stations reachable from the current one in the chosen mode (same game, same era, or everything).
-  function neighbours() {
-    if (!current || mode === 'random') return stations
-    return stations.filter((st) => st[mode] === current[mode])
-  }
+  // The stations in a row with the current one, in the chosen mode: its game's, its era's, or
+  // all of them in this visit's shuffled order. It is what the home screen's row shows, and what
+  // previous / next walk through.
+  const row = !current ? stations : mode === 'random' ? shuffled : stations.filter((st) => st[mode] === current[mode])
 
   function step(dir) {
-    if (mode === 'random') {
-      if (dir < 0 && history.current.length) {
-        const prev = stations.find((st) => st.id === history.current.pop())
-        if (prev) return tune(prev)
-      }
-      const others = stations.filter((st) => st.id !== currentId)
-      return playStation(others[Math.floor(Math.random() * others.length)])
-    }
-    const list = neighbours()
-    if (!list.length) return
-    const i = list.findIndex((st) => st.id === currentId)
-    playStation(list[(i + dir + list.length) % list.length])
+    if (!row.length) return
+    const i = row.findIndex((st) => st.id === currentId)
+    playStation(row[(i + dir + row.length) % row.length])
+  }
+
+  // To a station chosen by sliding the row or from the game picker: the radio follows if it is on;
+  // if nothing has played yet, the station is only brought up, ready for the play key.
+  function goTo(st) {
+    if (loadedId != null) playStation(st)
+    else setCurrentId(st.id)
+  }
+
+  function pickGame(id) {
+    setPicking(false)
+    if (current?.game === id) return
+    // Back to the station last listened to in that game, when it is still among the recents.
+    const target = recentStations.find((st) => st.game === id) ?? stations.find((st) => st.game === id)
+    if (target) goTo(target)
   }
 
   // --- The phone's keys (lock screen, notification, car, assistant, launchers like AutoZen) ---
@@ -788,6 +984,7 @@ export default function App() {
     if (wheel) closeWheel()
     else if (settingsOpen) closeSettings()
     else if (searching) setSearching(false)
+    else if (picking) setPicking(false)
     else if (details) setDetails(false)
   }
 
@@ -809,7 +1006,9 @@ export default function App() {
       wheel,
       loaded: () => loadedId != null,
       // In the middle of something a reload would undo.
-      busy: () => loadedId != null || settingsOpen || searching || Boolean(wheel),
+      step,
+      busy: () => loadedId != null || settingsOpen || searching || picking || Boolean(wheel),
+      layered: () => settingsOpen || searching || picking || details || drive,
     }
   })
 
@@ -831,9 +1030,13 @@ export default function App() {
         pressedAt = Date.now()
         a.holdStart(NaN, NaN)
         window.addEventListener('mousemove', onMouse)
-      } else if (a.wheel && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+      } else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+        // In the wheel, the arrows turn to the next game; on the home screen, to the next station.
+        const dir = e.code === 'ArrowLeft' ? -1 : 1
+        if (a.wheel) a.turnWheel(dir)
+        else if (!a.layered() && !e.target.closest('.stations')) a.step(dir)
+        else return
         e.preventDefault()
-        a.turnWheel(e.code === 'ArrowLeft' ? -1 : 1)
       } else if (e.code === 'Space' && !e.target.closest('button')) {
         e.preventDefault()
         a.togglePlay()
@@ -865,10 +1068,10 @@ export default function App() {
   const wheelLayer = Boolean(wheel) && !wheel.hold
   // The phone's back button (or a back swipe) closes the top layer instead of leaving the app:
   // while any layer is open, one extra history entry stands in for it.
-  const anyLayer = wheelLayer || settingsOpen || searching || drive || details
+  const anyLayer = wheelLayer || settingsOpen || searching || picking || drive || details
   const layers = useRef({})
   useEffect(() => {
-    layers.current = { wheel: wheelLayer, settingsOpen, searching, drive, details }
+    layers.current = { wheel: wheelLayer, settingsOpen, searching, picking, drive, details }
   })
   const justLoaded = useRef(true)
   useEffect(() => {
@@ -891,6 +1094,7 @@ export default function App() {
         setSettingsOpen(false)
         setScrobbleError(null)
       } else if (open.searching) setSearching(false)
+      else if (open.picking) setPicking(false)
       else if (open.drive) setDrive(false)
       else if (open.details) setDetails(false)
       else return
@@ -969,11 +1173,7 @@ export default function App() {
 
   useEffect(() => {
     if (!current) return
-    document.title = `${current.name} · Radio`
-    if (!('mediaSession' in navigator)) return
-    // Lock screen, notification, car display: the song when known, otherwise the station. The
-    // video's thumbnail stands in until the tile is drawn, and for stations without a logo.
-    navigator.mediaSession.metadata = new MediaMetadata({
+    showOutside(`${current.name} · Radio`, {
       title: song || current.name,
       artist: song ? current.name : current.dj || gameLabel(current.game),
       album: gameLabel(current.game),
@@ -1011,12 +1211,11 @@ export default function App() {
     mediaKey('seekto', live ? null : (e) => actions.current.seekTo(e.seekTime))
   }, [live])
 
-  // On the home screen: sideways changes station, up shows the details, a held finger opens the wheel.
+  // On the home screen: sideways changes station (the row of stations scrolls by itself; anywhere
+  // else, a swipe does it), up shows the details, a held finger opens the wheel.
   const sheetSwipe = useSwipe({
-    onMove: (s) => setDragX(s.axis === 'x' ? s.dx : 0),
     onEnd: (s) => {
-      setDragX(0)
-      if (s.axis === 'x' && Math.abs(s.dx) > 70) step(s.dx < 0 ? 1 : -1)
+      if (s.axis === 'x' && !s.strip && Math.abs(s.dx) > 70) step(s.dx < 0 ? 1 : -1)
       else if (s.axis === 'y' && s.dy < -70 && current) setDetails(true)
     },
     hold,
@@ -1028,7 +1227,6 @@ export default function App() {
   const playIcon = isCurrentLoaded && isPlaying ? PAUSE : PLAY
   const tuning = isCurrentLoaded && yt.status === 'buffering'
   const pct = isCurrentLoaded && yt.time.duration ? (yt.time.current / yt.time.duration) * 100 : 0
-  const dragStyle = dragX ? { transform: `translateX(${dragX}px)`, opacity: Math.max(0.3, 1 - Math.abs(dragX) / 280) } : undefined
   const modeButton = (
     <button className="ctrl ctrl--mode" title={`Changer de poste : ${modeInfo.label}`} onClick={cycleMode}>
       <Icon d={modeInfo.icon} />
@@ -1083,7 +1281,10 @@ export default function App() {
       >
         <header className="sheet-top">
           <h1 className="sheet-game">
-            {current ? gameLabel(current.game) : 'Radio'}
+            <button className="game-name" onClick={() => setPicking(true)} title="Choisir un jeu">
+              {current ? gameLabel(current.game) : 'Choisis un jeu'}
+              <Icon d={CHEVRON} size={18} />
+            </button>
             {live && <span className="lamp">En direct</span>}
           </h1>
           <span className="sheet-top-actions">
@@ -1104,9 +1305,13 @@ export default function App() {
           </span>
         </header>
         <div className="sheet-stage">
-          <button className={`sheet-art ${dragX ? 'dragging' : ''} ${current ? '' : 'sheet-art--none'}`} onClick={openWheel} aria-label="Roue des radios" style={dragStyle}>
-            {current ? <Cover key={current.id} station={current} /> : <Icon d={WHEEL} size={72} />}
-          </button>
+          {current ? (
+            <Carousel list={row} currentId={current.id} held={Boolean(wheel)} onChoose={goTo} onOpen={openWheel} onStep={step} />
+          ) : (
+            <button className="sheet-art--none" onClick={() => setPicking(true)} aria-label="Choisir un jeu">
+              <Icon d={WHEEL} size={72} />
+            </button>
+          )}
         </div>
         {/* What's on, in a corner, and one key. Touching the text or the dial opens the details. */}
         <div className="now">
@@ -1122,7 +1327,7 @@ export default function App() {
                 </span>
               ) : (
                 <span className="now-song">
-                  {!current && 'Touche un jeu, en bas.'}
+                  {!current && 'Touche « Choisis un jeu », en haut.'}
                   {current && (song || [current.dj, current.genre].filter(Boolean).join(' · '))}
                   {song && scrobbleStatus?.state === 'done' && <span className="song-scrobble song-scrobble--done"> ✓ envoyée</span>}
                   {song && scrobbleStatus?.state === 'error' && (
@@ -1157,7 +1362,6 @@ export default function App() {
             <i />
           </span>
         </button>
-        <GameBand extras={extras} games={GAMES.filter((g) => GAME_IDS.includes(g.id))} active={current?.game} onOpen={openWheel} />
       </main>
 
       {/* Behind the dial: the video, the list of songs, the full dial and the swipe mode. */}
@@ -1260,10 +1464,25 @@ export default function App() {
         />
       )}
 
+      {picking && (
+        <GamePicker
+          stations={stations}
+          currentId={currentId}
+          favStations={favStations}
+          recentStations={recentStations}
+          onGame={pickGame}
+          onStation={(st) => {
+            setPicking(false)
+            if (st.id !== loadedId) playStation(st)
+          }}
+          onClose={() => setPicking(false)}
+        />
+      )}
+
       {wheel && (
         <RadioWheel
           ref={wheelRef}
-          title={EXTRAS[wheel.game]?.name ?? gameLabel(wheel.game)}
+          title={EXTRAS[wheel.game] ?? gameLabel(wheel.game)}
           stations={wheelStations(wheel.game)}
           currentId={currentId}
           hold={wheel.hold}
