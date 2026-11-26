@@ -180,6 +180,24 @@ export function useYouTubePlayer(hostRef, live) {
     setTime((x) => ({ ...x, current: t }))
   }, [])
 
+  // A skip: to a given second, or `by` seconds from where the player is. Unlike a move of the
+  // needle, what a skip passes over on the way forward counts as heard: it is how a glitch, a
+  // song played twice or one that isn't wanted gets passed, and it shouldn't come back later as
+  // a stretch still to hear.
+  const skipTo = useCallback((t, by) => {
+    const p = playerRef.current
+    if (!readyRef.current || needsStartRef.current) return
+    const d = p.getDuration()
+    if (!(d > 0)) return
+    const from = p.getCurrentTime()
+    const to = Math.max(0, Math.min(by == null ? t : from + by, d - 1))
+    if (to > from) setHeard(addHeard(videoIdRef.current, from, to, d))
+    lastRef.current = null
+    p.seekTo(to, true)
+    setTime((x) => ({ ...x, current: to }))
+  }, [])
+  const hop = useCallback((by) => skipTo(null, by), [skipTo])
+
   // Another device's listening history arrived (see sync.js).
   useEffect(() => {
     const onSynced = (e) => e.detail.includes('radio:heard') && setHeard(readHeard())
@@ -200,5 +218,5 @@ export function useYouTubePlayer(hostRef, live) {
     }
   }, [])
 
-  return { status, time, volume, heard, resetHeard, load, toggle, seek, goLive, setVolume }
+  return { status, time, volume, heard, resetHeard, load, toggle, seek, skipTo, hop, goLive, setVolume }
 }

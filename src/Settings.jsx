@@ -288,7 +288,13 @@ function Lastfm({ settings }) {
   )
 }
 
-export default function Settings({ count, total, live, onLive, controls, onControls, skipSongs, onSkipSongs, updateReady, lastStatus, onClose }) {
+const KEY_MODES = [
+  { id: 'station', label: 'Poste' },
+  { id: 'song', label: 'Chanson' },
+  { id: 'hop', label: '30 secondes' },
+]
+
+export default function Settings({ count, total, live, onLive, controls, onControls, keys, onKeys, updateReady, lastStatus, onClose }) {
   const settings = useScrobbleSettings()
   const silent = sessionStatus()
   return (
@@ -333,16 +339,24 @@ export default function Settings({ count, total, live, onLive, controls, onContr
                 {SILENT[silent.state]}
               </p>
             ))}
-          <label className="switch-row">
-            <span>
-              <b>Précédent et suivant changent de chanson</b>
-              <span className="scrobble-help">
-                Sur les postes dont on a la liste des chansons ({count} sur {total}). Ailleurs, et quand c'est désactivé, ces touches changent de
-                poste.
-              </span>
-            </span>
-            <input type="checkbox" role="switch" className="switch" checked={skipSongs} onChange={(e) => onSkipSongs(e.target.checked)} />
-          </label>
+          <div className="choice-row">
+            <b id="keys-legend">Touches précédent et suivant</b>
+            <span className="scrobble-help">Celles du téléphone, de l'auto et des écouteurs.</span>
+            <div className="modes" role="group" aria-labelledby="keys-legend">
+              {KEY_MODES.map((k) => (
+                <button key={k.id} className="mode-key" aria-pressed={keys === k.id} onClick={() => onKeys(k.id)}>
+                  {k.label}
+                </button>
+              ))}
+            </div>
+            <p className="scrobble-help" role="status">
+              {keys === 'station' && 'Elles changent de poste, comme le glissement.'}
+              {keys === 'song' &&
+                `Elles passent d'une chanson à l'autre sur les postes dont on a la liste (${count} sur ${total}), et sautent 30 secondes sur les autres.`}
+              {keys === 'hop' && 'Elles reculent ou avancent de 30 secondes.'}
+              {keys !== 'station' && ' Ce qui est sauté vers l\'avant compte comme écouté. En direct, elles changent de poste.'}
+            </p>
+          </div>
         </section>
         <section>
           <h3>Synchro entre appareils</h3>

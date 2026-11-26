@@ -23,7 +23,9 @@ const KNOWS_WHEEL_KEY = 'radio:knows-wheel'
 // On this device: whether the app takes the phone's media controls, and whether their previous /
 // next keys go from song to song instead of from station to station.
 const CONTROLS_KEY = 'radio:controls'
-const SKIP_SONGS_KEY = 'radio:skip-songs'
+// What the previous and next keys do: 'station', 'song' or 'hop'.
+const KEYS_KEY = 'radio:keys'
+const HOP = 30
 // The app icon's "Mode auto" shortcut opens with ?auto (see the manifest).
 const LAUNCH_IN_CAR = new URLSearchParams(window.location.search).has('auto')
 
@@ -53,6 +55,7 @@ const PLAY = 'M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1
 const PAUSE = 'M6 5h4v14H6zM14 5h4v14h-4z'
 const PREV = 'M6 6h2v12H6zm3.5 6 8.5 6V6z'
 const NEXT = 'M16 6h2v12h-2zM6 18l8.5-6L6 6z'
+const REPLAY = 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z'
 const VOL = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.47 4.47 0 0 0 2.5-4z'
 const MUTE = 'M3 9v6h4l5 5V4L7 9H3zm13.59 3L19 9.59 17.59 8.17 15.17 10.6 12.76 8.17 11.34 9.59 13.76 12l-2.42 2.41 1.42 1.42 2.41-2.42 2.42 2.42L19 14.41z'
 const RADIO = 'M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM7 20a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm13-8h-2v-2h-2v2H4V8h16v4z'
@@ -126,11 +129,16 @@ const PERCENT = new Intl.NumberFormat('fr-CA', { style: 'percent' })
 
 // The dial: one band shows where you are (the needle, which you can drag) and which parts of the
 // recording you've already heard (lit).
-function Dial({ rec, time, enabled, live, onSeek, onReset }) {
+function Dial({ rec, time, enabled, live, onSeek, onHop, onReset }) {
   const ratio = heardRatio(rec)
   const current = enabled ? time.current : 0
   return (
     <div className="dial">
+      {/* Either side of the band, a key that skips 30 seconds: past a glitch, or a song heard twice. */}
+      <button className="ctrl hop" disabled={!enabled || live} onClick={() => onHop(-HOP)} title="Reculer de 30 secondes (Maj + ←)" aria-label="Reculer de 30 secondes">
+        <Icon d={REPLAY} />
+        <span>{HOP}</span>
+      </button>
       <div className="dial-band">
         {rec?.d > 0 &&
           rec.iv.map(([a, b]) => <span key={a} style={{ left: `${(a / rec.d) * 100}%`, width: `${((b - a) / rec.d) * 100}%` }} />)}
@@ -145,6 +153,10 @@ function Dial({ rec, time, enabled, live, onSeek, onReset }) {
           aria-valuetext={fmt(current)}
         />
       </div>
+      <button className="ctrl hop hop--on" disabled={!enabled || live} onClick={() => onHop(HOP)} title="Avancer de 30 secondes (Maj + →)" aria-label="Avancer de 30 secondes">
+        <Icon d={REPLAY} />
+        <span>{HOP}</span>
+      </button>
       <div className="dial-foot">
         <span>{fmt(current)}</span>
         {live ? (
@@ -920,7 +932,8 @@ export default function App() {
   const [recent, setRecent] = useState(() => readJson(RECENT_KEY, []))
   const [drive, setDrive] = useState(() => LAUNCH_IN_CAR || readJson(DRIVE_KEY, false))
   const [controls, setControls] = useState(() => readJson(CONTROLS_KEY, sessionByDefault))
-  const [skipSongs, setSkipSongs] = useState(() => readJson(SKIP_SONGS_KEY, false))
+  // (An older version had a switch for songs only.)
+  const [keys, setKeys] = useState(() => readJson(KEYS_KEY, null) ?? (readJson('radio:skip-songs', false) ? 'song' : 'station'))
   // The current station's tile, drawn for the lock screen: { id, url }.
   const [art, setArt] = useState(null)
   // A newer version is on the server, and couldn't be taken without interrupting something.
@@ -975,8 +988,8 @@ export default function App() {
     localStorage.setItem(CONTROLS_KEY, JSON.stringify(controls))
   }, [controls])
   useEffect(() => {
-    localStorage.setItem(SKIP_SONGS_KEY, JSON.stringify(skipSongs))
-  }, [skipSongs])
+    localStorage.setItem(KEYS_KEY, JSON.stringify(keys))
+  }, [keys])
   // The shortcut has done its job: a reload shouldn't force the car screen again.
   useEffect(() => {
     if (LAUNCH_IN_CAR) window.history.replaceState(window.history.state, '', window.location.pathname + window.location.hash)
@@ -1049,19 +1062,21 @@ export default function App() {
     if (want !== isPlaying) yt.toggle()
   }
 
-  // Previous / next. They change station, like the swipe. With the setting on and a known list of
-  // songs, they go from song to song instead: next to the following song, previous to the start
-  // of this one, or to the one before when it has just begun.
+  // Previous / next, as the phone, the car or a headset send them. A setting says what they do:
+  // change station, like the swipe; go from song to song, where the list of songs is known (next
+  // to the following song, previous to the start of this one, or to the one before when it has
+  // just begun); or skip 30 seconds. A broadcast can't be moved: live, they change station.
   function skip(dir) {
-    const list = isCurrentLoaded && skipSongs && !live && current.tracks
-    if (!list) return step(dir)
-    const songs = list.map((_, i) => i).filter((i) => current.songs[i])
-    if (!songs.length) return step(dir)
+    if (keys === 'station' || !isCurrentLoaded || live) return step(dir)
+    const list = keys === 'song' && current.tracks
+    const songs = list ? list.map((_, i) => i).filter((i) => current.songs[i]) : []
+    // No list to go by: 30 seconds, rather than leaving the station.
+    if (!songs.length) return yt.hop(dir * HOP)
     let to
     if (dir > 0) to = songs.find((i) => i > trackNow) ?? songs[0]
     else if (current.songs[trackNow] && yt.time.current - list[trackNow][0] > 5) to = trackNow
     else to = songs.findLast((i) => i < trackNow) ?? songs[songs.length - 1]
-    yt.seek(list[to][0])
+    yt.skipTo(list[to][0])
   }
 
   // Rewind / fast-forward, and the notification's own seek bar. A broadcast can't be moved.
@@ -1069,7 +1084,7 @@ export default function App() {
     if (!isCurrentLoaded || live || !(yt.time.duration > 0) || !(t >= 0)) return
     yt.seek(Math.min(t, yt.time.duration - 1))
   }
-  const nudge = (by) => seekTo(Math.max(0, yt.time.current + by))
+  const nudge = (by) => isCurrentLoaded && !live && yt.hop(by)
 
   function cycleMode() {
     const i = MODES.findIndex((m) => m.id === mode)
@@ -1199,7 +1214,9 @@ export default function App() {
       } else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         // In the wheel, the arrows turn to the next game; on the home screen, to the next station.
         const dir = e.code === 'ArrowLeft' ? -1 : 1
-        if (a.wheel) a.rollWheel(dir)
+        // With Shift, anywhere but in the wheel: 30 seconds back or on.
+        if (e.shiftKey && !a.wheel) a.nudge(dir * HOP)
+        else if (a.wheel) a.rollWheel(dir)
         else if (!a.layered() && !e.target.closest('.stations')) a.step(dir)
         else return
         e.preventDefault()
@@ -1563,6 +1580,7 @@ export default function App() {
               enabled={isCurrentLoaded}
               live={live}
               onSeek={yt.seek}
+              onHop={nudge}
               onReset={() => yt.resetHeard(current.videoId)}
             />
             <div className="legend" id="modes-legend">
@@ -1612,8 +1630,8 @@ export default function App() {
           onLive={changeLive}
           controls={controls}
           onControls={setControls}
-          skipSongs={skipSongs}
-          onSkipSongs={setSkipSongs}
+          keys={keys}
+          onKeys={setKeys}
           updateReady={updateReady}
           lastStatus={scrobbleError ? { state: 'error', error: scrobbleError } : lastScrobble}
           onClose={closeSettings}
