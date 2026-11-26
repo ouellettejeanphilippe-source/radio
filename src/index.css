@@ -59,24 +59,16 @@ label {
   outline-offset: 2px;
 }
 /* Every control answers a press. */
-.card,
 .ctrl,
-.drive-open,
 .drive-close,
 .drive-btn,
-.player-mini-play,
-.player-step,
 .scrobble-btn,
 .btn-link {
   transition: transform 0.09s ease-out;
 }
-.card:active,
 .ctrl:active:not(:disabled),
-.drive-open:active,
 .drive-close:active,
 .drive-btn:active,
-.player-mini-play:active,
-.player-step:active,
 .scrobble-btn:active:not(:disabled),
 .btn-link:active {
   transform: scale(0.96);
@@ -84,61 +76,17 @@ label {
 
 /* GTA-style display type. The hard black outline stays where a name sits on a station's colour. */
 .display,
-.mobile-brand > h1,
-.shelf h2,
 .wheel-name {
   font-family: var(--display);
   font-weight: 900;
   letter-spacing: 1px;
 }
-.mobile-brand > h1,
 .wheel-name {
   -webkit-text-stroke: 1.5px #000;
   paint-order: stroke fill;
   text-shadow: 2px 3px 0 #000;
 }
 
-/* One layout for every screen: the phone one, centred and a bit roomier on computers. */
-.main {
-  position: fixed;
-  inset: 0;
-  overflow: auto;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 36%, transparent) 0, transparent 320px),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 2px, transparent 2px 6px),
-    var(--asphalt);
-  transition: background 0.6s;
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom));
-}
-.main::after {
-  content: '';
-  display: block;
-  height: calc(96px + env(safe-area-inset-bottom));
-}
-.main-header,
-.shelf,
-.empty {
-  max-width: 1280px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.main-header {
-  padding: calc(12px + env(safe-area-inset-top)) 16px 4px;
-}
-.mobile-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  color: var(--dial);
-}
-.mobile-brand > h1 {
-  margin: 0 auto 0 0;
-  font-size: 34px;
-  color: var(--legend);
-}
 .search {
   flex: 1;
   min-width: 0;
@@ -181,43 +129,21 @@ label {
   border-color: var(--dial);
   color: var(--dial);
 }
-/* The band of games: the home screen's index, drawn like the tuner band. A series is printed once,
-   its games are the marks, and the needle sits on the one the page is scrolled to. */
+/* The band of games, along the bottom of the home screen: the way in to every station, drawn like
+   the tuner band. A series is printed once, its games are the marks; a touch on a mark opens that
+   game's wheel, and the needle sits on the game of the station that is on. */
 .gameband {
-  position: sticky;
-  top: env(safe-area-inset-top);
-  z-index: 3;
-  margin-top: 8px;
-  padding: 8px 16px;
-  transition: background 0.2s;
-}
-/* Once stuck, it gets a backing so the shelves pass under it, up to the top of the screen. */
-.gameband.is-stuck,
-.gameband.is-stuck::before {
-  background: color-mix(in srgb, var(--asphalt) 84%, transparent);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-}
-.gameband.is-stuck {
-  box-shadow: 0 1px 0 var(--bezel);
-}
-.gameband.is-stuck::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: env(safe-area-inset-top);
+  padding: 0 max(20px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 .gameband-well {
-  max-width: 1248px;
   height: 44px;
-  margin: 0 auto;
   border-radius: 8px;
   border: 1px solid var(--bezel-strong);
   background: var(--well);
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  /* The screen around it doesn't pan; the band does, sideways. */
+  touch-action: pan-x;
   scrollbar-width: none;
 }
 .gameband-well::-webkit-scrollbar {
@@ -293,126 +219,6 @@ label {
     transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
     opacity 0.2s;
 }
-/* A jump from the band leaves the shelf's title clear of it. */
-.shelf {
-  scroll-margin-top: calc(72px + env(safe-area-inset-top));
-}
-.shelf-head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 24px 16px 12px;
-}
-.shelf h2 {
-  font-size: 26px;
-  line-height: 1.1;
-  margin: 0;
-}
-.shelf-count {
-  color: var(--legend-3);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.shelf-arrows {
-  display: none;
-  gap: 4px;
-  margin-left: auto;
-  align-self: center;
-}
-.shelf .row {
-  display: flex;
-  gap: 12px;
-  padding: 0 16px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-padding: 0 16px;
-  scrollbar-width: none;
-}
-.shelf .row::-webkit-scrollbar {
-  display: none;
-}
-.card {
-  display: block;
-  flex: 0 0 38vw;
-  max-width: 170px;
-  min-width: 0;
-  scroll-snap-align: start;
-  text-align: left;
-}
-.card:focus-visible {
-  outline: none;
-}
-.card:focus-visible .cover {
-  outline: 2px solid var(--dial);
-  outline-offset: -2px;
-}
-.card-cover {
-  position: relative;
-  margin-bottom: 8px;
-}
-.card-title {
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.card.active .card-title {
-  color: var(--dial);
-}
-.card.active .cover {
-  outline: 2px solid var(--dial);
-  outline-offset: -2px;
-}
-.card-sub {
-  margin-top: 3px;
-  font-size: 12px;
-  color: var(--legend-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.card-play {
-  display: none;
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--dial);
-  color: var(--dial-ink);
-  place-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  opacity: 0;
-  transform: translateY(8px);
-  transition:
-    opacity 0.25s,
-    transform 0.25s;
-}
-.card:hover .card-play,
-.card.active .card-play {
-  opacity: 1;
-  transform: none;
-}
-.card-heard {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: -5px;
-  height: 3px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--dial) var(--pct), var(--bezel-strong) var(--pct));
-}
-.empty {
-  color: var(--legend-2);
-  padding: 8px 24px;
-}
-.empty .btn-link {
-  font-size: inherit;
-}
-
 /* What the recording holds: DJ + ads, DJ, music only, talk */
 .badge {
   display: inline-block;
@@ -426,36 +232,11 @@ label {
   background: rgba(6, 7, 8, 0.72);
   border: 1px solid var(--bezel-strong);
 }
-.card-cover .badge {
-  position: absolute;
-  left: 6px;
-  top: 6px;
-}
 .fav.on,
 .fav.on:hover:not(:disabled),
 .drive-fav.on {
   color: var(--dial);
 }
-.drive-open {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 40px;
-  min-width: 40px;
-  padding: 0 14px;
-  border-radius: 20px;
-  background: var(--key);
-  border: 1px solid var(--bezel);
-  color: var(--legend);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.drive-open:hover {
-  background: var(--key-lit);
-}
-
 /* Car mode */
 .drive {
   position: fixed;
@@ -535,8 +316,7 @@ label {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.drive-song.is-error,
-.player-sub.is-error {
+.drive-song.is-error {
   color: var(--needle);
 }
 .drive-controls {
@@ -639,18 +419,6 @@ label {
   font-family: var(--display);
   font-size: 48px;
 }
-.cover--small {
-  width: 52px;
-  flex: none;
-  border-radius: 4px;
-}
-.cover--small.cover--logo img {
-  padding: 8%;
-}
-.cover--small.cover--gen {
-  font-size: 20px;
-}
-
 .btn-link {
   color: var(--legend-2);
   font-size: 12px;
@@ -670,70 +438,7 @@ label {
   font-size: 13px;
 }
 
-/* Mini player, floating at the bottom */
-.player {
-  position: fixed;
-  left: max(8px, env(safe-area-inset-left));
-  right: max(8px, env(safe-area-inset-right));
-  bottom: calc(8px + env(safe-area-inset-bottom));
-  max-width: 760px;
-  margin: 0 auto;
-  height: 68px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px 13px 7px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--accent) 26%, var(--dash));
-  border: 1px solid var(--bezel-strong);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
-  overflow: hidden;
-  z-index: 5;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-.player--empty {
-  display: none;
-}
-.player-left {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  text-align: left;
-  transition:
-    transform 0.25s,
-    opacity 0.25s;
-}
-.player-left.dragging {
-  transition: none;
-}
-.player-left .cover--small {
-  width: 46px;
-}
-.player-mini-play,
-.player-step {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  flex: none;
-}
-.player-mini-play {
-  border-radius: 50%;
-  background: var(--dial);
-  color: var(--dial-ink);
-}
-.player-step {
-  display: none;
-  color: var(--legend-2);
-}
-.player-step:hover {
-  color: var(--legend);
-}
-/* The dial under the display: ticks lit up to the needle. */
+/* The dial as a line of ticks, lit up to the needle. */
 .player-dial {
   position: absolute;
   left: 12px;
@@ -766,7 +471,6 @@ label {
   box-shadow: 0 0 6px var(--needle);
 }
 /* Tuning in: the needle sweeps the band until the station plays, like the static you hear. */
-.player.is-tuning .player-dial i,
 .sheet.is-tuning .player-dial i {
   animation: sweep 1.1s ease-in-out infinite alternate;
 }
@@ -777,24 +481,6 @@ label {
   to {
     transform: translateX(98%);
   }
-}
-.player-left > div {
-  min-width: 0;
-}
-.player-title {
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.player-sub {
-  font-size: 12px;
-  color: var(--legend-2);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .controls {
   display: flex;
@@ -984,27 +670,25 @@ input[type='range']:disabled {
   border-radius: 8px;
 }
 
-/* The listening screen: the station's sign out in the night, and next to nothing else. What's on
-   sits in a corner with one key; the dial is a line at the bottom, as on the mini player. */
+/* The home screen is the radio itself: the station's sign out in the night, and next to nothing
+   else. What's on sits in a corner with one key; under it, the dial as a line and the band of
+   games. The emptiness is the point. */
 .sheet {
   position: fixed;
   inset: 0;
   z-index: 30;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  /* One column that can't be pushed wider by the band of games, which scrolls inside itself. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
   /* The night, lit from where the sign hangs. */
   background:
     radial-gradient(90% 56% at 50% 44%, color-mix(in srgb, var(--accent) 30%, transparent) 0, transparent 100%),
     var(--asphalt);
-  animation: sheet-up 0.28s ease-out;
   overflow: hidden;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
-}
-/* Opened on at launch: it's simply there. */
-.sheet--restored {
-  animation: none;
 }
 .sheet-top {
   height: 56px;
@@ -1014,12 +698,21 @@ input[type='range']:disabled {
   align-items: center;
   gap: 12px;
 }
+/* On the home screen: the game on the left, three small keys on the right. */
 .sheet > .sheet-top {
+  grid-template-columns: minmax(0, 1fr) auto;
   margin-top: env(safe-area-inset-top);
   padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
 }
 .sheet-top .ctrl {
   color: var(--legend);
+}
+.sheet > .sheet-top .ctrl {
+  color: var(--legend-2);
+}
+/* Something is on in the settings, or a newer version waits there. */
+.sheet > .sheet-top .ctrl.on {
+  color: var(--dial);
 }
 .sheet-top > .ctrl {
   justify-self: start;
@@ -1039,6 +732,8 @@ input[type='range']:disabled {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  margin: 0;
+  overflow: hidden;
   color: var(--legend-2);
   white-space: nowrap;
 }
@@ -1071,7 +766,8 @@ input[type='range']:disabled {
   padding: 4px 20px 24px;
 }
 .sheet-art {
-  height: min(100%, 84vw, 520px);
+  /* Smaller than it could be: the dark around the sign is part of the picture. */
+  height: min(100%, 62vw, 400px);
   max-width: 100%;
   aspect-ratio: 1;
   border-radius: 12px;
@@ -1084,6 +780,12 @@ input[type='range']:disabled {
 }
 .sheet-art:active:not(.dragging) {
   transform: scale(0.98);
+}
+/* Nothing chosen yet: the wheel, to be opened. */
+.sheet-art--none {
+  display: grid;
+  place-items: center;
+  color: var(--legend-3);
 }
 .sheet-art .cover {
   height: 100%;
@@ -1110,7 +812,14 @@ input[type='range']:disabled {
   column-gap: 16px;
   padding: 0 max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
 }
+.now-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .now-text {
+  flex: 1;
   display: grid;
   gap: 4px;
   min-width: 0;
@@ -1203,8 +912,8 @@ input[type='range']:disabled {
 /* The dial, as a line along the bottom: a touch on it opens the details. */
 .sheet-dial {
   position: relative;
-  height: 32px;
-  margin: 0 max(20px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(20px, env(safe-area-inset-left));
+  height: 28px;
+  margin: 0 max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
 }
 .sheet-dial .player-dial {
   left: 0;
@@ -1250,6 +959,10 @@ input[type='range']:disabled {
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     padding-top: 8px;
   }
+  /* The heart stays with the caption instead of drifting towards the keys. */
+  .now-text {
+    flex: 0 1 auto;
+  }
   .now-side {
     grid-column: auto;
     flex-direction: column;
@@ -1257,11 +970,14 @@ input[type='range']:disabled {
     gap: 4px;
   }
 }
-/* Phone on its side: the sign on the left, the caption on the right. */
+/* Phone on its side: the sign on the left, the caption on the right, dial and band underneath. */
 @media (orientation: landscape) and (max-height: 559px) {
   .sheet {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+  }
+  .gameband {
+    grid-column: 1 / -1;
   }
   .sheet > .sheet-top {
     grid-column: 1 / -1;
@@ -1277,6 +993,53 @@ input[type='range']:disabled {
     grid-column: 1 / -1;
     height: 24px;
   }
+}
+
+/* Every station as a plain list by game, which is also the search. */
+.directory {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--asphalt);
+  animation: fade-in 0.18s ease-out;
+}
+.directory-inner {
+  height: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 0;
+  display: flex;
+  flex-direction: column;
+}
+.directory-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  scrollbar-width: thin;
+  scrollbar-color: var(--key-lit) transparent;
+}
+.directory-list .legend {
+  margin: 24px 8px 4px;
+}
+.directory .track {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.directory-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 44vw;
+  overflow: hidden;
+  color: var(--legend-3);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.directory-sub svg {
+  flex: none;
+  color: var(--dial);
 }
 
 /* The details, behind the dial: the video, the list of songs, the full dial, the swipe mode. */
@@ -1514,22 +1277,13 @@ input[type='range']:disabled {
   }
 }
 
-/* Narrow phones: the car button keeps its icon only, so the header stays on one line. */
-@media (max-width: 379px) {
-  .drive-open--icon + .drive-open span {
-    display: none;
-  }
-}
-
-/* Fingers: every control answers on at least 44px. Icon buttons and the header pills get a larger
-   hit area around them, so nothing moves; the settings panel has room and grows instead. */
+/* Fingers: every control answers on at least 44px. Icon buttons get a larger hit area around
+   them, so nothing moves; the settings panel has room and grows instead. */
 @media (pointer: coarse) {
-  .ctrl,
-  .drive-open {
+  .ctrl {
     position: relative;
   }
-  .ctrl::after,
-  .drive-open::after {
+  .ctrl::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -1571,26 +1325,10 @@ input[type='range']:disabled {
   }
 }
 
-/* Bigger screens: same layout, slightly larger tiles. */
-@media (min-width: 701px) {
-  .card {
-    flex-basis: 180px;
-    max-width: 180px;
-  }
-  .search {
-    max-width: 520px;
-  }
-}
-
-/* Mouse: arrows to scroll the rows, play button on hover, prev/next and volume. */
+/* Mouse: the volume, the keys on either side of play, and hover states. */
 @media (hover: hover) and (pointer: fine) {
-  .shelf-arrows,
   .volume {
     display: flex;
-  }
-  .card-play,
-  .player-step {
-    display: grid;
   }
   .scrobble-btn:hover:not(:disabled) {
     filter: brightness(1.12);
@@ -1601,12 +1339,6 @@ input[type='range']:disabled {
   }
   .drive-btn--main:hover {
     background: #ffc257;
-  }
-  .player-mini-play:hover {
-    transform: scale(1.08);
-  }
-  .player-mini-play:active {
-    transform: scale(0.96);
   }
   .hold-hint--touch {
     display: none;
@@ -1639,13 +1371,7 @@ input[type='range']:disabled {
   }
 }
 
-/* Scrobbling */
-.drive-open--icon {
-  padding: 0;
-}
-.drive-open--icon.on {
-  color: var(--dial);
-}
+/* Settings */
 .scrobble-panel {
   width: min(440px, calc(100vw - 32px));
   max-height: calc(100vh - 32px);
