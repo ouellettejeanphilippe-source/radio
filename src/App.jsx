@@ -8,6 +8,7 @@ import META from './meta.json'
 import { countScrobblable, finishLastfmLogin, parseSong, scrobblingOn, useScrobbler, useScrobbleSettings } from './scrobble.js'
 import Settings from './Settings.jsx'
 import { holdSession, mediaKey, sessionByDefault, tile } from './session.js'
+import { initials, sign, useFaces } from './sign.js'
 import { newerBuild, reloadFor } from './update.js'
 import ConfirmButton from './Confirm.jsx'
 import { startSync, useSync } from './sync.js'
@@ -75,14 +76,19 @@ const MODES = [
   { id: 'random', label: 'Aléatoire', icon: SHUFFLE },
 ]
 
-const thumb = (st) => `https://i.ytimg.com/vi/${st.videoId}/mqdefault.jpg`
+// The recording's picture on YouTube: small, or as large as it comes (`big`), then small in case
+// the large one doesn't exist.
+const thumbs = (st, big) => [...(big ? ['maxresdefault'] : []), 'mqdefault'].map((size) => `https://i.ytimg.com/vi/${st.videoId}/${size}.jpg`)
 
-// Logo on a tile in the station's colour; falls back to the video thumbnail, then to initials.
-function Cover({ station, className = '' }) {
-  const sources = [station.logo, thumb(station)].filter(Boolean)
+// A station's picture: its logo; failing that, the recording's own picture where it has one
+// (`art`, see stations.js); failing that, its name, written out as a sign (see sign.js), or its
+// initials where the picture is small. `big` is for where it is shown large.
+function Cover({ station, big, className = '' }) {
+  const sources = [station.logo, ...(station.art ? thumbs(station, big) : [])].filter(Boolean)
   const [index, setIndex] = useState(0)
   // Tiny in-game textures (GTA 2's logos are 64 px wide) are shown as the pixel art they are.
   const [tiny, setTiny] = useState(false)
+  useFaces()
   const src = sources[index]
   const isLogo = src && src === station.logo
   if (src) {
@@ -96,22 +102,22 @@ function Cover({ station, className = '' }) {
           decoding="async"
           draggable={false}
           referrerPolicy="no-referrer"
-          onLoad={(e) => setTiny(e.target.naturalWidth > 0 && e.target.naturalWidth < 140)}
+          onLoad={(e) => {
+            const width = e.target.naturalWidth
+            // A picture YouTube doesn't have comes back as a grey placeholder, 120 px wide.
+            if (!isLogo && width <= 120) setIndex(index + 1)
+            else setTiny(width > 0 && width < 140)
+          }}
           onError={() => setIndex(index + 1)}
         />
       </div>
     )
   }
-  const initials = station.name
-    .replace(/[^A-Za-z0-9 ]/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
+  const { lines, size } = sign(station.name)
   return (
-    <div className={`cover cover--gen ${className}`} style={{ '--c': station.color }}>
-      <span>{initials}</span>
+    <div className={`cover cover--gen ${className}`} style={{ '--c': station.color, '--fit': (size * 100).toFixed(1) }}>
+      <span className="gen-name">{lines.join('\n')}</span>
+      <span className="gen-initials">{initials(station.name)}</span>
     </div>
   )
 }
@@ -606,7 +612,7 @@ function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, 
         aria-label="Roue des radios"
         style={{ transform: dragX ? `translateX(${dragX}px)` : undefined, opacity: dragX ? Math.max(0.3, 1 - Math.abs(dragX) / 300) : undefined }}
       >
-        {station ? <Cover key={station.id} station={station} /> : <Icon d={RADIO} size={96} />}
+        {station ? <Cover key={station.id} station={station} big /> : <Icon d={RADIO} size={96} />}
       </button>
       <div className="drive-info">
         <div className="drive-name">{station?.name ?? 'Choisis une station'}</div>
@@ -808,7 +814,7 @@ function Carousel({ list, currentId, held, onChoose, onOpen, onStep }) {
           aria-label={st.id === currentId ? `${st.name} : ouvrir la roue des radios` : st.name}
           aria-current={st.id === currentId ? 'true' : undefined}
         >
-          <Cover station={st} />
+          <Cover station={st} big />
         </button>
       ))}
     </div>
@@ -1337,10 +1343,13 @@ export default function App() {
       title: song || current.name,
       artist: song ? current.name : current.dj || gameLabel(current.game),
       album: gameLabel(current.game),
+      // The tile drawn for the station, once it is; a recording with a picture of its own shows that.
       artwork:
         art?.id === current.id
           ? [{ src: art.url, sizes: '512x512', type: 'image/png' }]
-          : [{ src: `https://i.ytimg.com/vi/${current.videoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }],
+          : current.art
+            ? [{ src: thumbs(current, true)[0], sizes: '1280x720', type: 'image/jpeg' }]
+            : [],
     })
   }, [current, song, art])
 
@@ -1536,7 +1545,7 @@ export default function App() {
               <span className="sheet-top-actions" />
             </div>
             {/* The real YouTube iframe is positioned over this slot (see .audio-host--video). */}
-            <div className="video-slot">{!isCurrentLoaded && <Cover key={current.id} station={current} />}</div>
+            <div className="video-slot">{!isCurrentLoaded && <Cover key={current.id} station={current} big />}</div>
             <div className="chips">
               {current.dj && <span className="badge">{current.dj}</span>}
               <span className="badge">{current.genre}</span>

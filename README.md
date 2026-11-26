@@ -27,7 +27,7 @@ L'app donne à Android le poste, la chanson en cours, le logo et la position dan
 - Précédent et suivant changent de poste, selon le mode de glissement. Le réglage « Précédent et suivant changent de chanson » les fait passer d'une chanson à l'autre sur les postes dont on a la liste; précédent revient alors au début de la chanson, ou à celle d'avant si elle vient de commencer.
 - Recul et avance déplacent de 30 s, et la barre de la notification déplace l'aiguille. En écoute en direct, ni l'un ni l'autre n'est offert.
 - Le son vient du lecteur YouTube, dans son propre cadre, et c'est normalement à lui qu'Android confie les commandes : on verrait le titre de la vidéo, sans pouvoir changer de poste. Pour les garder, l'app joue une piste de silence à côté (`src/session.js`). Ça se désactive dans « Réglages » (« Commandes du téléphone ») si le son coupe, et la même section dit si la piste joue ou si le navigateur l'a refusée; c'est désactivé au départ sur iPhone, où ça n'a pas été essayé.
-- Le logo est redessiné en PNG sur la tuile du poste, parce que la notification n'affiche pas les SVG du wiki.
+- Le logo est redessiné en PNG sur la tuile du poste, parce que la notification n'affiche pas les SVG du wiki. Un poste sans logo y a son nom, comme dans l'app.
 - Installée depuis le navigateur, l'app a un raccourci « Mode auto » (appui long sur son icône).
 - La lecture en arrière-plan dépend encore du navigateur, comme indiqué plus haut.
 
@@ -51,7 +51,7 @@ Dans « Réglages », on peut envoyer les chansons écoutées à ListenBrainz et
 
 ## Stations
 
-Tout est dans `src/stations.js` : jeu, nom, DJ, genre, couleur, vidéo YouTube et logo.
+Tout est dans `src/stations.js` : jeu, nom, DJ, genre, couleur, vidéo YouTube et logo. Un poste sans logo affiche son nom, écrit dans la police de l'app et ajusté pour remplir le carré (`src/sign.js`), ou ses initiales là où l'image est petite, comme sur la roue : la vignette de la vidéo est presque toujours la jaquette du jeu, la même pour tous ses postes. Quand l'enregistrement a une vraie illustration du poste, on ajoute son identifiant à `OWN_ART` et c'est elle qui s'affiche, en pleine résolution.
 
 ## Mises à jour
 

@@ -322,12 +322,37 @@ label {
 .cover--pixel img {
   image-rendering: pixelated;
 }
+/* No picture: the station's name, written out as a sign in its colour and sized to fill the
+   square (--fit, from sign.js). Where the cover is small, as on the wheel, its initials. */
 .cover--gen {
+  container-type: size;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 45%, color-mix(in srgb, var(--c) 40%, #000));
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 52%, var(--dash)) 0, var(--well) 80%);
   font-family: var(--display);
-  font-size: 48px;
+  font-weight: 900;
+  color: color-mix(in srgb, var(--c) 60%, #fff);
+  text-align: center;
+  -webkit-text-stroke: 0.1em #000;
+  paint-order: stroke fill;
+}
+.gen-name {
+  display: none;
+  font-size: calc(var(--fit) * 1cqmin);
+  line-height: 0.94;
+  white-space: pre;
+}
+.gen-initials {
+  font-size: 46cqmin;
+  line-height: 1;
+}
+@container (min-width: 140px) {
+  .gen-name {
+    display: block;
+  }
+  .gen-initials {
+    display: none;
+  }
 }
 .btn-link {
   color: var(--legend-2);
@@ -736,12 +761,33 @@ input[type='range']:disabled {
   border-radius: 12px;
 }
 /* A logo hangs in the dark like a lit sign, with no tile behind it: its own colour is the halo,
-   once it is the one in the middle. */
-.station .cover--logo {
+   once it is the one in the middle. A name written out does the same. */
+.station .cover--logo,
+.station .cover--gen,
+.station .cover--thumb {
   background: none;
   outline: 0;
   box-shadow: none;
   overflow: visible;
+}
+.station .cover--gen {
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.6));
+}
+.station.is-near .cover--gen {
+  filter: drop-shadow(0 0 26px color-mix(in srgb, var(--c) 58%, transparent)) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.6));
+}
+/* A recording's own picture is shown whole, as wide as a logo would be. */
+.station .cover--thumb {
+  display: grid;
+  place-items: center;
+}
+.station .cover--thumb img {
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  outline: 1px solid var(--bezel);
+  outline-offset: -1px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
 }
 .station .cover--logo img {
   padding: 3%;

@@ -1,5 +1,5 @@
 // youtube: URL or video ID of a full station recording (music + DJ + ads). Stations without one are hidden.
-// logo: optional image URL; falls back to the YouTube thumbnail.
+// logo: optional image URL. Without one, the station's name is written out (see OWN_ART below).
 // era: when the game takes place (not when its music is from).
 export const ERAS = [
   { id: '40s', name: 'Années 40-50' },
@@ -551,8 +551,24 @@ const LOGOS = {
   'mafia3-wvce-1150': 'https://static.wikia.nocookie.net/mafiagame/images/3/30/WVCE.png/revision/latest',
 }
 
+// Stations without a logo whose recording carries a picture of their own (fan stations, a few
+// uploads): it stands in for the logo. For all the others the video's picture is the game's box
+// art, the same on every station of the game, and the app writes the station's name instead.
+const OWN_ART = [
+  'gta6-the-sniper-of-la-perle',
+  'gta6-the-vault-radio',
+  'gta2-lo-fi-fm',
+  'fo4-raider-radio',
+  'fans-peachead-radio',
+  'fans-ls-live-radio-after-dark',
+  'fans-ls-live-radio-voices-of-los-santos',
+  'fans-ls-live-radio-halloween',
+  'fans-unit51-fm',
+]
+
 export const STATIONS = LIST.map((st) => ({
   ...st,
   era: GAMES.find((g) => g.id === st.game).era,
   logo: st.logo || (LOGOS[st.id] ? (LOGOS[st.id].startsWith('http') ? LOGOS[st.id] : wiki(LOGOS[st.id])) : ''),
+  art: OWN_ART.includes(st.id),
 }))
