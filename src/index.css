@@ -504,6 +504,42 @@ input[type='range']:disabled {
   width: 100%;
   margin-top: auto;
   padding-top: 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 6px;
+}
+/* The keys either side of the band: 30 seconds back, 30 seconds on. One arrow, turned round. */
+.hop {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  color: var(--legend-2);
+}
+.hop svg {
+  width: 34px;
+  height: 34px;
+}
+/* The number sits in the arrow's loop, whose middle is a little below the icon's. */
+.hop span {
+  position: absolute;
+  left: 50%;
+  top: 54.5%;
+  transform: translate(-50%, -50%);
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.hop--on svg {
+  transform: scaleX(-1);
+}
+.hop:disabled {
+  opacity: 0.35;
+}
+.dial-foot {
+  grid-column: 1 / -1;
 }
 .dial-band {
   position: relative;
@@ -1657,6 +1693,18 @@ input[type='range']:disabled {
 }
 .switch-row + .switch-row {
   margin-top: 16px;
+}
+/* A setting with more than two answers: its name, then the answers as a row of keys. */
+.choice-row {
+  margin-top: 16px;
+  font-size: 15px;
+}
+.choice-row > .scrobble-help {
+  display: block;
+  margin: 4px 0 0;
+}
+.choice-row .modes {
+  margin-top: 10px;
 }
 /* Which version this is, at the foot of the settings; and the newer one, when there is one. */
 .version {
