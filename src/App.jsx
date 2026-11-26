@@ -20,8 +20,6 @@ const RECENT_KEY = 'radio:recent'
 const DRIVE_KEY = 'radio:drive'
 const LIVE_KEY = 'radio:live'
 const KNOWS_WHEEL_KEY = 'radio:knows-wheel'
-// On this device: whether a station was playing when the app was last left.
-const PLAYING_KEY = 'radio:playing'
 // On this device: whether the app takes the phone's media controls, and whether their previous /
 // next keys go from song to song instead of from station to station.
 const CONTROLS_KEY = 'radio:controls'
@@ -329,7 +327,7 @@ function dropNextClick() {
   setTimeout(() => window.removeEventListener('click', drop, { capture: true }), 350)
 }
 // Controls that keep their own long press: holding one of them doesn't open the wheel.
-const NO_HOLD = '.ctrl, .drive-btn, .drive-close, .player-mini-play, .player-step, .hold-hint, .now-text, .sheet-dial'
+const NO_HOLD = '.ctrl, .drive-btn, .drive-close, .hold-hint, .now-text, .sheet-dial'
 
 // Tracks a touch and reports whether it became a horizontal or vertical drag. With `hold`, a finger
 // that stays put for a moment starts a hold instead: its moves and its release go to hold.move and
@@ -340,9 +338,9 @@ function useSwipe({ onMove, onEnd, hold }) {
     onTouchStart: (e) => {
       const before = ref.current
       clearTimeout(before?.timer)
-      // A drag on the seek bar moves the playback and the tracklist scrolls: neither is a swipe.
-      // A second finger calls everything off.
-      if (e.touches.length > 1 || e.target.closest('input, .tracks')) {
+      // A drag on the seek bar moves the playback, and the list of songs and the band of games
+      // scroll: none of them is a swipe. A second finger calls everything off.
+      if (e.touches.length > 1 || e.target.closest('input, .tracks, .gameband')) {
         ref.current = null
         if (before?.held) hold.cancel()
         return
@@ -478,48 +476,83 @@ function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, 
 
 const FAILED = 'Ne joue pas en ce moment'
 
-// A titled horizontal row of stations; arrows scroll it with a mouse.
-function Shelf({ id, title, count, children }) {
-  const rowRef = useRef(null)
-  const scroll = (dir) => rowRef.current.scrollBy({ left: dir * rowRef.current.clientWidth * 0.8, behavior: 'smooth' })
+// Every station, as a plain list by game: where to look one up by name, DJ, genre or game.
+// It is the search too: typing narrows the list.
+function Directory({ stations, currentId, favs, onPick, onClose }) {
+  const [query, setQuery] = useState('')
+  const q = fold(query.trim())
+  const shown = stations.filter((st) => !q || st.search.includes(q))
   return (
-    <section className="shelf" id={id}>
-      <div className="shelf-head">
-        <h2>{title}</h2>
-        <span className="shelf-count">
-          {count} poste{count > 1 ? 's' : ''}
-        </span>
-        <span className="shelf-arrows">
-          <button className="ctrl" onClick={() => scroll(-1)} aria-label="Défiler à gauche">
-            <Icon d={LEFT} size={26} />
+    <div className="directory" role="dialog" aria-modal="true" aria-label="Tous les postes">
+      <div className="directory-inner">
+        <div className="search-bar">
+          <label className="search-field">
+            <Icon d={SEARCH} />
+            <input
+              className="search"
+              type="search"
+              name="q"
+              aria-label="Rechercher un poste, un DJ, un genre ou un jeu"
+              placeholder="Poste, DJ, genre ou jeu…"
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="search"
+              // Opened by a tap on the search key: typing can start at once.
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              // The app's own Escape leaves text fields alone; this one closes the list.
+              onKeyDown={(e) => e.key === 'Escape' && onClose()}
+            />
+          </label>
+          <button className="ctrl" onClick={onClose} aria-label="Fermer">
+            <Icon d={CLOSE} size={26} />
           </button>
-          <button className="ctrl" onClick={() => scroll(1)} aria-label="Défiler à droite">
-            <Icon d={RIGHT} size={26} />
-          </button>
-        </span>
+        </div>
+        <div className="directory-list">
+          {GAMES.map((g) => {
+            const list = shown.filter((st) => st.game === g.id)
+            if (!list.length) return null
+            return (
+              <section key={g.id}>
+                <h2 className="legend">{g.name}</h2>
+                {list.map((st) => (
+                  <button key={st.id} className={`track ${st.id === currentId ? 'now' : ''}`} onClick={() => onPick(st)} aria-current={st.id === currentId ? 'true' : undefined}>
+                    <span className="track-title">{st.name}</span>
+                    <span className="directory-sub">
+                      {favs.includes(st.id) && <Icon d={HEART} size={12} />}
+                      {st.dj || st.genre}
+                    </span>
+                  </button>
+                ))}
+              </section>
+            )
+          })}
+          {!shown.length && <p className="tracks-none">Aucun poste trouvé.</p>}
+        </div>
       </div>
-      <div className="row" ref={rowRef}>
-        {children}
-      </div>
-    </section>
+    </div>
   )
 }
 
+// The marks that come before the games on the band, and the wheels they open.
+const EXTRAS = {
+  favs: { id: 'favs', name: 'Favoris', mark: 'Favoris' },
+  recent: { id: 'recent', name: 'Récemment écoutés', mark: 'Récents' },
+}
+
 export default function App() {
-  const [query, setQuery] = useState('')
+  // The list of every station, which is also the search.
   const [searching, setSearching] = useState(false)
   const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
   const [loadedId, setLoadedId] = useState(null)
   const [mode, setMode] = useState(() => readJson(MODE_KEY, 'game'))
   const [live, setLive] = useState(() => readJson(LIVE_KEY, false))
-  // The listening screen. 'restored' when the app opens on it because a station was playing at the
-  // last visit: it is then already there, instead of sliding up, and one touch on play resumes.
-  const [expanded, setExpanded] = useState(() => {
-    const id = readJson(PLAYING_KEY, false) && !LAUNCH_IN_CAR && !readJson(DRIVE_KEY, false) && readJson(CURRENT_KEY, null)
-    return STATIONS_PLAYABLE.some((st) => st.id === id) ? 'restored' : false
-  })
   const [details, setDetails] = useState(false)
-  // The radio wheel: which game it shows, and whether a finger or the Q key is holding it open.
+  // The radio wheel: which game it shows (or 'favs', 'recent'), and whether a finger or the Q key
+  // is holding it open.
   const [wheel, setWheel] = useState(null)
   const [lastVolume, setLastVolume] = useState(80)
   const [dragX, setDragX] = useState(0)
@@ -540,7 +573,6 @@ export default function App() {
   const { sync } = useSync()
   const history = useRef([])
   const hostRef = useRef(null)
-  const mainRef = useRef(null)
   const stopStatic = useRef(null)
   const wheelRef = useRef(null)
   // While the wheel is held open: where the hold started and whether the pointer has moved since.
@@ -549,10 +581,14 @@ export default function App() {
 
   const stations = STATIONS_PLAYABLE
   const current = stations.find((st) => st.id === currentId)
-  const q = fold(query.trim())
-  const visible = stations.filter((st) => !q || st.search.includes(q))
-  const shownGames = GAMES.filter((g) => visible.some((st) => st.game === g.id))
   const byIds = (ids) => ids.map((id) => stations.find((st) => st.id === id)).filter(Boolean)
+  const favStations = byIds(favs)
+  const recentStations = byIds(recent)
+  // What the wheel can show, in the band's order: favourites and recents when there are any,
+  // then every game.
+  const extras = [favStations.length && EXTRAS.favs, recentStations.length && EXTRAS.recent].filter(Boolean)
+  const wheelPages = [...extras.map((x) => x.id), ...GAME_IDS]
+  const wheelStations = (page) => (page === 'favs' ? favStations : page === 'recent' ? recentStations : stations.filter((st) => st.game === page))
   const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
   const modeInfo = MODES.find((m) => m.id === mode) ?? MODES[0]
@@ -588,13 +624,6 @@ export default function App() {
   useEffect(() => {
     if (LAUNCH_IN_CAR) window.history.replaceState(window.history.state, '', window.location.pathname + window.location.hash)
   }, [])
-
-  // Remembered for the next visit. A pause counts as having stopped; a station that fails or an
-  // app that is closed while it plays doesn't.
-  useEffect(() => {
-    if (yt.status === 'playing') localStorage.setItem(PLAYING_KEY, 'true')
-    else if (yt.status === 'paused') localStorage.setItem(PLAYING_KEY, 'false')
-  }, [yt.status])
 
   // The static stops once the new station is playing (or has failed).
   useEffect(() => {
@@ -681,11 +710,6 @@ export default function App() {
   }
   const nudge = (by) => seekTo(Math.max(0, yt.time.current + by))
 
-  function closeSearch() {
-    setQuery('')
-    setSearching(false)
-  }
-
   function cycleMode() {
     const i = MODES.findIndex((m) => m.id === mode)
     setMode(MODES[(i + 1) % MODES.length].id)
@@ -698,13 +722,14 @@ export default function App() {
 
   // Like in the games, the wheel opens on the current game's stations, whatever the mode.
   const wheelGame = () => current?.game ?? GAME_IDS[0]
-  const openWheel = () => setWheel({ game: wheelGame(), hold: false })
+  // With a page from the band (a game, 'favs', 'recent'), or on the current game's.
+  const openWheel = (page) => setWheel({ game: typeof page === 'string' ? page : wheelGame(), hold: false })
   function closeWheel() {
     holding.current = null
     setWheel(null)
   }
   function turnWheel(dir) {
-    setWheel((w) => w && { ...w, game: GAME_IDS[(GAME_IDS.indexOf(w.game) + dir + GAME_IDS.length) % GAME_IDS.length] })
+    setWheel((w) => w && { ...w, game: wheelPages[(wheelPages.indexOf(w.game) + dir + wheelPages.length) % wheelPages.length] })
   }
   function pickFromWheel(st) {
     if (st.id !== loadedId) playStation(st)
@@ -762,8 +787,8 @@ export default function App() {
   function closeTop() {
     if (wheel) closeWheel()
     else if (settingsOpen) closeSettings()
+    else if (searching) setSearching(false)
     else if (details) setDetails(false)
-    else if (expanded) setExpanded(false)
   }
 
   const actions = useRef({})
@@ -840,10 +865,10 @@ export default function App() {
   const wheelLayer = Boolean(wheel) && !wheel.hold
   // The phone's back button (or a back swipe) closes the top layer instead of leaving the app:
   // while any layer is open, one extra history entry stands in for it.
-  const anyLayer = wheelLayer || settingsOpen || drive || expanded
+  const anyLayer = wheelLayer || settingsOpen || searching || drive || details
   const layers = useRef({})
   useEffect(() => {
-    layers.current = { wheel: wheelLayer, settingsOpen, drive, details, expanded }
+    layers.current = { wheel: wheelLayer, settingsOpen, searching, drive, details }
   })
   const justLoaded = useRef(true)
   useEffect(() => {
@@ -865,9 +890,9 @@ export default function App() {
       else if (open.settingsOpen) {
         setSettingsOpen(false)
         setScrobbleError(null)
-      } else if (open.drive) setDrive(false)
+      } else if (open.searching) setSearching(false)
+      else if (open.drive) setDrive(false)
       else if (open.details) setDetails(false)
-      else if (open.expanded) setExpanded(false)
       else return
       // Another layer is still open underneath: it keeps an entry.
       if (Object.values(open).filter(Boolean).length > 1) window.history.pushState({ layer: true }, '')
@@ -986,23 +1011,13 @@ export default function App() {
     mediaKey('seekto', live ? null : (e) => actions.current.seekTo(e.seekTime))
   }, [live])
 
-  const miniSwipe = useSwipe({
-    onMove: (s) => setDragX(s.axis === 'x' ? s.dx : 0),
-    onEnd: (s) => {
-      setDragX(0)
-      if (s.axis === 'x' && Math.abs(s.dx) > 70) step(s.dx < 0 ? 1 : -1)
-      else if (s.axis === 'y' && s.dy < -50 && current) setExpanded(true)
-    },
-    hold,
-  })
-  // On the listening screen: sideways changes station, down closes it, up shows the details.
+  // On the home screen: sideways changes station, up shows the details, a held finger opens the wheel.
   const sheetSwipe = useSwipe({
     onMove: (s) => setDragX(s.axis === 'x' ? s.dx : 0),
     onEnd: (s) => {
       setDragX(0)
       if (s.axis === 'x' && Math.abs(s.dx) > 70) step(s.dx < 0 ? 1 : -1)
-      else if (s.axis === 'y' && s.dy > 90) setExpanded(false)
-      else if (s.axis === 'y' && s.dy < -70) setDetails(true)
+      else if (s.axis === 'y' && s.dy < -70 && current) setDetails(true)
     },
     hold,
   })
@@ -1054,189 +1069,52 @@ export default function App() {
     </div>
   )
 
-  function renderCard(st) {
-    const active = st.id === currentId
-    const heard = heardRatio(yt.heard[st.videoId])
-    return (
-      <button key={st.id} className={`card ${active ? 'active' : ''}`} onClick={() => playStation(st)}>
-        <div className="card-cover">
-          <Cover station={st} />
-          {/* Most stations have DJ + ads; only the exceptions are flagged on the tiles. */}
-          {st.talk !== 'full' && <TalkBadge talk={st.talk} />}
-          {heard > 0 && <span className="card-heard" style={{ '--pct': `${heard * 100}%` }} />}
-          <span className="card-play">
-            <Icon d={active && isCurrentLoaded && isPlaying ? PAUSE : PLAY} size={22} />
-          </span>
-        </div>
-        <div className="card-title">{st.name}</div>
-        <div className="card-sub">{st.dj || st.genre}</div>
-      </button>
-    )
-  }
-
   return (
     <div className="app">
       <div ref={hostRef} className={`audio-host ${details && isCurrentLoaded ? 'audio-host--video' : ''}`} aria-hidden="true" />
 
-      <main ref={mainRef} className="main" style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer}>
-        <header className="main-header">
-          {searching ? (
-            <div className="search-bar">
-              <label className="search-field">
-                <Icon d={SEARCH} />
-                <input
-                  className="search"
-                  type="search"
-                  name="q"
-                  aria-label="Rechercher une station, un DJ, un genre ou un jeu"
-                  placeholder="Station, DJ, genre ou jeu…"
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  enterKeyHint="search"
-                  // Opened by a tap on the search key: typing can start at once.
-                  autoFocus
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
-                />
-              </label>
-              <button className="drive-open drive-open--icon" onClick={closeSearch} aria-label="Fermer la recherche">
-                <Icon d={CLOSE} />
-              </button>
-            </div>
-          ) : (
-            <div className="mobile-brand">
-              <Icon d={RADIO} size={24} />
-              <h1>Radio</h1>
-              <button className="drive-open drive-open--icon" onClick={() => setSearching(true)} aria-label="Rechercher" title="Rechercher (/)">
-                <Icon d={SEARCH} />
-              </button>
-              <button
-                className={`drive-open drive-open--icon ${scrobblingOn(scrobbleSettings) || sync || updateReady ? 'on' : ''}`}
-                onClick={() => setSettingsOpen(true)}
-                aria-label="Réglages"
-                title="Réglages&nbsp;: écoute en direct, synchro entre appareils, scrobbling"
-              >
-                <Icon d={GEAR} />
-              </button>
-              <button className="drive-open" onClick={() => setDrive(true)} aria-label="Mode auto">
-                <Icon d={CAR} />
-                <span>Mode auto</span>
-              </button>
-            </div>
-          )}
+      {/* The home screen is the radio itself: the station's sign in the night, what's on in a corner,
+          one key, and the band of games along the bottom. Most of it is left empty on purpose. */}
+      <main
+        className={`sheet ${isCurrentLoaded && yt.status === 'playing' ? 'is-playing' : ''} ${tuning ? 'is-tuning' : ''}`}
+        style={{ '--accent': current?.color ?? '#2b2f34' }}
+        inert={anyLayer}
+        {...sheetSwipe}
+      >
+        <header className="sheet-top">
+          <h1 className="sheet-game">
+            {current ? gameLabel(current.game) : 'Radio'}
+            {live && <span className="lamp">En direct</span>}
+          </h1>
+          <span className="sheet-top-actions">
+            <button className="ctrl" onClick={() => setSearching(true)} aria-label="Tous les postes" title="Tous les postes (/)">
+              <Icon d={SEARCH} size={24} />
+            </button>
+            <button
+              className={`ctrl ${scrobblingOn(scrobbleSettings) || sync || updateReady ? 'on' : ''}`}
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Réglages"
+              title="Réglages&nbsp;: écoute en direct, commandes du téléphone, synchro, scrobbling"
+            >
+              <Icon d={GEAR} size={24} />
+            </button>
+            <button className="ctrl" onClick={() => setDrive(true)} aria-label="Mode auto" title="Mode auto">
+              <Icon d={CAR} size={24} />
+            </button>
+          </span>
         </header>
-        {/* A search already narrows the page down: the band is for the whole catalogue. */}
-        {!q && <GameBand games={shownGames} scroller={mainRef} />}
-        {!q && favs.length > 0 && (
-          <Shelf title="Tes favoris" count={byIds(favs).length}>
-            {byIds(favs).map(renderCard)}
-          </Shelf>
-        )}
-        {!q && recent.length > 0 && (
-          <Shelf title="Récemment écoutées" count={byIds(recent).length}>
-            {byIds(recent).map(renderCard)}
-          </Shelf>
-        )}
-        {shownGames.map((g) => {
-          const list = visible.filter((st) => st.game === g.id)
-          return (
-            <Shelf key={g.id} id={`jeu-${g.id}`} title={g.name} count={list.length}>
-              {list.map(renderCard)}
-            </Shelf>
-          )
-        })}
-        {!visible.length && (
-          <p className="empty">
-            Aucune station trouvée.{' '}
-            <button className="btn-link" onClick={closeSearch}>
-              Effacer la recherche
-            </button>
-          </p>
-        )}
-      </main>
-
-      <footer className={`player ${current ? '' : 'player--empty'} ${tuning ? 'is-tuning' : ''}`} style={{ '--accent': current?.color ?? '#535353' }} inert={anyLayer} {...miniSwipe}>
-        <button className={`player-left ${dragX ? 'dragging' : ''}`} onClick={() => current && setExpanded(true)} style={dragStyle}>
-          {current && (
-            <>
-              <Cover key={current.id} station={current} className="cover--small" />
-              <div>
-                <div className="player-title">{current.name}</div>
-                {failed ? (
-                  <div className="player-sub is-error" role="alert">
-                    {FAILED}
-                  </div>
-                ) : (
-                  <div className="player-sub">{song || current.dj || gameLabel(current.game)}</div>
-                )}
-              </div>
-            </>
-          )}
-        </button>
-        {/* No swipe or long press with a mouse: prev/next and the wheel show up next to play on computers. */}
-        <button className="player-step" onClick={() => step(-1)} aria-label="Station précédente">
-          <Icon d={PREV} size={22} />
-        </button>
-        <button className="player-mini-play" onClick={togglePlay} aria-label="Lecture / pause">
-          <Icon d={playIcon} size={26} />
-        </button>
-        <button className="player-step" onClick={() => step(1)} aria-label="Station suivante">
-          <Icon d={NEXT} size={22} />
-        </button>
-        <button className="player-step" onClick={openWheel} aria-label="Roue des radios" title="Roue des radios (maintenir Q)">
-          <Icon d={WHEEL} size={22} />
-        </button>
-        <span className="player-dial" style={{ '--pct': `${pct}%` }}>
-          <i />
-        </span>
-      </footer>
-
-      {/* The listening screen: the station's sign in the night, and next to nothing else. */}
-      {expanded && current && (
-        <div
-          className={`sheet ${expanded === 'restored' ? 'sheet--restored' : ''} ${isCurrentLoaded && yt.status === 'playing' ? 'is-playing' : ''} ${tuning ? 'is-tuning' : ''}`}
-          style={{ '--accent': current.color }}
-          inert={details || wheelLayer || settingsOpen}
-          {...sheetSwipe}
-        >
-          <div className="sheet-top">
-            <button className="ctrl" onClick={() => setExpanded(false)} aria-label="Fermer">
-              <Icon d={CHEVRON} size={30} />
-            </button>
-            <span className="sheet-game">
-              {gameLabel(current.game)}
-              {live && <span className="lamp">En direct</span>}
-            </span>
-            <span className="sheet-top-actions">
-              <button className={`ctrl fav ${isFav ? 'on' : ''}`} onClick={() => toggleFav(current)} aria-label="Favori" aria-pressed={isFav}>
-                <Icon d={isFav ? HEART : HEART_OUTLINE} size={26} />
-              </button>
-              <button
-                className="ctrl"
-                onClick={() => {
-                  setExpanded(false)
-                  setDrive(true)
-                }}
-                aria-label="Mode auto"
-              >
-                <Icon d={CAR} size={26} />
-              </button>
-            </span>
-          </div>
-          <div className="sheet-stage">
-            <button className={`sheet-art ${dragX ? 'dragging' : ''}`} onClick={openWheel} aria-label="Roue des radios" style={dragStyle}>
-              <Cover key={current.id} station={current} />
-            </button>
-          </div>
-          {/* What's on, in a corner, and one key. Touching the text or the dial opens the details. */}
-          <div className="now">
-            <button className="now-text" onClick={() => setDetails(true)} title="Liste des chansons, cadran et vidéo">
+        <div className="sheet-stage">
+          <button className={`sheet-art ${dragX ? 'dragging' : ''} ${current ? '' : 'sheet-art--none'}`} onClick={openWheel} aria-label="Roue des radios" style={dragStyle}>
+            {current ? <Cover key={current.id} station={current} /> : <Icon d={WHEEL} size={72} />}
+          </button>
+        </div>
+        {/* What's on, in a corner, and one key. Touching the text or the dial opens the details. */}
+        <div className="now">
+          <div className="now-main">
+            <button className="now-text" onClick={() => setDetails(true)} disabled={!current} title="Liste des chansons, cadran et vidéo">
               <span className="now-name">
-                <Bars />
-                {current.name}
+                {current && <Bars />}
+                {current?.name ?? 'Choisis un poste'}
               </span>
               {failed ? (
                 <span className="now-song is-error" role="alert">
@@ -1244,7 +1122,8 @@ export default function App() {
                 </span>
               ) : (
                 <span className="now-song">
-                  {song || [current.dj, current.genre].filter(Boolean).join(' · ')}
+                  {!current && 'Touche un jeu, en bas.'}
+                  {current && (song || [current.dj, current.genre].filter(Boolean).join(' · '))}
                   {song && scrobbleStatus?.state === 'done' && <span className="song-scrobble song-scrobble--done"> ✓ envoyée</span>}
                   {song && scrobbleStatus?.state === 'error' && (
                     <span className="song-scrobble song-scrobble--error" title={scrobbleStatus.error}>
@@ -1255,28 +1134,34 @@ export default function App() {
                 </span>
               )}
             </button>
-            {/* A finger swipes to change station: only a mouse gets the two side keys. */}
-            <div className="controls now-keys">{transport}</div>
-            <div className="now-side">
-              {volume}
-              <button className={`hold-hint ${knowsWheel ? 'hold-hint--known' : ''}`} onClick={openWheel}>
-                <span className="hold-hint--touch">Garde le doigt appuyé pour la roue</span>
-                <span className="hold-hint--key">
-                  Garde <kbd>Q</kbd> enfoncé pour la roue
-                </span>
+            {current && (
+              <button className={`ctrl fav ${isFav ? 'on' : ''}`} onClick={() => toggleFav(current)} aria-label="Favori" aria-pressed={isFav}>
+                <Icon d={isFav ? HEART : HEART_OUTLINE} size={24} />
               </button>
-            </div>
+            )}
           </div>
-          <button className="sheet-dial" onClick={() => setDetails(true)} aria-label="Cadran, liste des chansons et vidéo">
-            <span className="player-dial" style={{ '--pct': `${pct}%` }}>
-              <i />
-            </span>
-          </button>
+          {/* A finger swipes to change station: only a mouse gets the two side keys. */}
+          <div className="controls now-keys">{transport}</div>
+          <div className="now-side">
+            {volume}
+            <button className={`hold-hint ${knowsWheel ? 'hold-hint--known' : ''}`} onClick={openWheel}>
+              <span className="hold-hint--touch">Garde le doigt appuyé pour la roue</span>
+              <span className="hold-hint--key">
+                Garde <kbd>Q</kbd> enfoncé pour la roue
+              </span>
+            </button>
+          </div>
         </div>
-      )}
+        <button className="sheet-dial" onClick={() => setDetails(true)} disabled={!current} aria-label="Cadran, liste des chansons et vidéo">
+          <span className="player-dial" style={{ '--pct': `${pct}%` }}>
+            <i />
+          </span>
+        </button>
+        <GameBand extras={extras} games={GAMES.filter((g) => GAME_IDS.includes(g.id))} active={current?.game} onOpen={openWheel} />
+      </main>
 
       {/* Behind the dial: the video, the list of songs, the full dial and the swipe mode. */}
-      {expanded && details && current && (
+      {details && current && (
         <div className="details" style={{ '--accent': current.color }} inert={wheelLayer || settingsOpen} {...detailsSwipe}>
           <div className="details-inner">
             <div className="sheet-top">
@@ -1362,11 +1247,24 @@ export default function App() {
         />
       )}
 
+      {searching && (
+        <Directory
+          stations={stations}
+          currentId={currentId}
+          favs={favs}
+          onPick={(st) => {
+            if (st.id !== loadedId) playStation(st)
+            setSearching(false)
+          }}
+          onClose={() => setSearching(false)}
+        />
+      )}
+
       {wheel && (
         <RadioWheel
           ref={wheelRef}
-          title={gameLabel(wheel.game)}
-          stations={stations.filter((st) => st.game === wheel.game)}
+          title={EXTRAS[wheel.game]?.name ?? gameLabel(wheel.game)}
+          stations={wheelStations(wheel.game)}
           currentId={currentId}
           hold={wheel.hold}
           onPick={pickFromWheel}
