@@ -168,15 +168,78 @@ function useViewport() {
   return size
 }
 
+// How much a wheel turns as it rolls across the screen: 1 would be a wheel rolling on the ground
+// without slipping; less keeps the logos readable on the way.
+const ROLL = 0.6
+
 // GTA-style radio wheel: a game's logos around a ring, the station's name in the middle.
-// Tapped open, a tap on a logo tunes in. Held open (a finger kept on the player, or the Q key),
-// the parent feeds it the pointer through aim() and tunes to aimed() on release.
-function RadioWheel({ ref, title, stations, currentId, hold, onPick, onGame, onClose }) {
+// `pages` are the wheel before, the one shown and the one after: { id, title, stations }.
+// Tapped open, a tap on a logo tunes in, and the wheel follows a finger that swipes across it:
+// it rolls aside with the finger while the next game's wheel rolls in, and lets go past a fifth of
+// the screen (or on a flick) finishes the move; short of that, it rolls back. Held open (a finger
+// kept on the player, or the Q key), the parent feeds it the pointer through aim() and tunes to
+// aimed() on release; there is only the one wheel then.
+function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
   const [pointed, setPointed] = useState(null)
   const aimed = useRef(null)
+  const track = useRef(null)
   const box = useRef(null)
+  // The game the wheel is rolling to, until it gets there: 1, -1, or 0 when it is at rest. And
+  // one more turn asked for meanwhile by a key, to make once it has arrived.
+  const rolling = useRef(0)
+  const queued = useRef(0)
   const { w, h } = useViewport()
+  const stations = pages[1].stations
   const layout = wheelLayout(stations.length, w, h)
+
+  // Puts the wheels where a sideways move of dx pixels takes them, straight in the page: a finger
+  // moves many times a second, and three wheels of logos are a lot to draw through React each time.
+  const place = (dx, glide) => {
+    track.current.classList.toggle('gliding', glide)
+    for (const el of track.current.querySelectorAll('.wheel')) {
+      const x = Number(el.dataset.k) * w + dx
+      el.style.transform = `translateX(${x}px)`
+      el.style.opacity = 1 - Math.min(1, Math.abs(x) / w) * 0.7
+      el.firstElementChild.style.transform = `rotate(${(x / Number(el.dataset.r)) * ROLL}rad)`
+    }
+  }
+  // Rolls to the next (1) or previous (-1) game, then tells the parent, which hands back the new
+  // three wheels: the one that has just arrived in the middle is already drawn there. A second
+  // press of a key while it rolls isn't lost (`wait`): it goes once the wheel is there.
+  const turn = (dir, wait) => {
+    if (rolling.current) {
+      if (wait) queued.current = dir
+      return
+    }
+    if (hold) return onGame(dir)
+    rolling.current = dir
+    place(-dir * w, true)
+    setTimeout(() => {
+      rolling.current = 0
+      track.current?.classList.remove('gliding')
+      onGame(dir)
+      const next = queued.current
+      queued.current = 0
+      // Once the new wheels are drawn.
+      if (next) setTimeout(() => track.current && turn(next, true), 40)
+    }, 250)
+  }
+  const swipe = useSwipe({
+    onMove: (s) => s.axis === 'x' && !rolling.current && place(s.dx, false),
+    onEnd: (s) => {
+      if (s.axis !== 'x' || rolling.current) return
+      // Far enough, or let go on the move in that direction.
+      const flick = Math.abs(s.dx) > 24 && s.vx * s.dx > 0 && Math.abs(s.vx) > 0.3
+      if (Math.abs(s.dx) > w / 5 || flick) turn(s.dx < 0 ? 1 : -1)
+      else place(0, true)
+    },
+  })
+  // A mouse wheel or a trackpad turns it too: a notch is a game.
+  const onRoll = (e) => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+    if (Math.abs(d) >= 8) turn(d > 0 ? 1 : -1)
+  }
+
   useImperativeHandle(ref, () => ({
     aim(x, y) {
       const r = box.current.getBoundingClientRect()
@@ -192,45 +255,62 @@ function RadioWheel({ ref, title, stations, currentId, hold, onPick, onGame, onC
       aimed.current = null
       setPointed(null)
     },
+    turn: (dir) => turn(dir, true),
   }))
-  // A logo pointed at in another game's wheel doesn't count in this one.
-  const shown = stations.find((st) => st.id === pointed) ?? stations.find((st) => st.id === currentId)
+
+  // While a finger holds the wheel open, that finger aims: no swipe then, and no wheels waiting on
+  // either side.
+  const shown = hold ? [{ ...pages[1], k: 0 }] : pages.map((pg, i) => ({ ...pg, k: i - 1 }))
   return (
-    <div className="wheel-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Roue des radios">
-      <div
-        ref={box}
-        className="wheel"
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: 2 * layout.rx + layout.item, height: 2 * layout.ry + layout.item, '--item': `${layout.item}px` }}
-      >
-        {stations.map((st, i) => (
-          <button
-            key={st.id}
-            className={`wheel-item ${st.id === currentId ? 'active' : ''} ${st.id === pointed ? 'aimed' : ''}`}
-            style={{ left: `calc(50% + ${layout.pts[i].x.toFixed(1)}px)`, top: `calc(50% + ${layout.pts[i].y.toFixed(1)}px)` }}
-            onClick={() => onPick(st)}
-            onPointerEnter={() => !hold && setPointed(st.id)}
-            onPointerLeave={() => !hold && setPointed(null)}
-            aria-label={st.name}
+    <div ref={track} className="wheel-backdrop" onClick={onClose} onWheel={onRoll} role="dialog" aria-modal="true" aria-label="Roue des radios" {...(hold ? {} : swipe)}>
+      {shown.map((pg) => {
+        const here = pg.k === 0
+        const at = here ? layout : wheelLayout(pg.stations.length, w, h)
+        // A logo pointed at in another game's wheel doesn't count in this one.
+        const named = (here && pg.stations.find((st) => st.id === pointed)) || pg.stations.find((st) => st.id === currentId)
+        return (
+          <div
+            key={pg.id}
+            ref={here ? box : undefined}
+            className="wheel"
+            data-k={pg.k}
+            data-r={at.r}
+            inert={!here}
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 2 * at.r + at.item, height: 2 * at.r + at.item, '--item': `${at.item}px`, transform: `translateX(${pg.k * w}px)`, opacity: here ? 1 : 0.3 }}
           >
-            <Cover station={st} />
-          </button>
-        ))}
-        <div className="wheel-center" style={{ width: Math.min(layout.rx, layout.ry) * 1.24 }}>
-          <div className="wheel-game">
-            <button className="ctrl" onClick={() => onGame(-1)} aria-label="Jeu précédent">
-              <Icon d={LEFT} size={26} />
-            </button>
-            <span className="wheel-title">{title}</span>
-            <button className="ctrl" onClick={() => onGame(1)} aria-label="Jeu suivant">
-              <Icon d={RIGHT} size={26} />
-            </button>
+            <div className="wheel-ring" style={{ transform: `rotate(${((pg.k * w) / at.r) * ROLL}rad)` }}>
+              {pg.stations.map((st, i) => (
+                <button
+                  key={st.id}
+                  className={`wheel-item ${st.id === currentId ? 'active' : ''} ${here && st.id === pointed ? 'aimed' : ''}`}
+                  style={{ left: `calc(50% + ${at.pts[i].x.toFixed(1)}px)`, top: `calc(50% + ${at.pts[i].y.toFixed(1)}px)` }}
+                  onClick={() => onPick(st)}
+                  onPointerEnter={() => !hold && setPointed(st.id)}
+                  onPointerLeave={() => !hold && setPointed(null)}
+                  aria-label={st.name}
+                >
+                  <Cover station={st} />
+                </button>
+              ))}
+            </div>
+            <div className="wheel-center" style={{ width: at.r * 1.24 }}>
+              <div className="wheel-game">
+                <button className="ctrl" onClick={() => turn(-1, true)} aria-label="Jeu précédent">
+                  <Icon d={LEFT} size={26} />
+                </button>
+                <span className="wheel-title">{pg.title}</span>
+                <button className="ctrl" onClick={() => turn(1, true)} aria-label="Jeu suivant">
+                  <Icon d={RIGHT} size={26} />
+                </button>
+              </div>
+              <div className="wheel-name">{named?.name ?? 'Choisis un poste'}</div>
+              {named && <div className="wheel-dj">{named.dj || named.genre}</div>}
+              {hold && <div className="wheel-hint">{pointed ? 'Relâche pour syntoniser' : 'Glisse vers un logo'}</div>}
+            </div>
           </div>
-          <div className="wheel-name">{shown?.name ?? 'Choisis un poste'}</div>
-          {shown && <div className="wheel-dj">{shown.dj || shown.genre}</div>}
-          {hold && <div className="wheel-hint">{pointed ? 'Relâche pour syntoniser' : 'Glisse vers un logo'}</div>}
-        </div>
-      </div>
+        )
+      })}
     </div>
   )
 }
@@ -346,7 +426,7 @@ function useSwipe({ onMove, onEnd, hold }) {
       }
       const t = e.touches[0]
       // On the row of stations, the browser does the sideways scrolling itself (`strip`).
-      const s = { x: t.clientX, y: t.clientY, axis: null, dx: 0, dy: 0, held: false, strip: Boolean(e.target.closest('.stations')) }
+      const s = { x: t.clientX, y: t.clientY, axis: null, dx: 0, dy: 0, held: false, strip: Boolean(e.target.closest('.stations')), trail: [[e.timeStamp, 0]] }
       if (hold && !e.target.closest(NO_HOLD)) {
         s.timer = setTimeout(() => {
           s.held = true
@@ -362,6 +442,9 @@ function useSwipe({ onMove, onEnd, hold }) {
       if (s.held) return hold.move(t.clientX, t.clientY)
       s.dx = t.clientX - s.x
       s.dy = t.clientY - s.y
+      // The last tenth of a second of the move, to tell a flick from a slow drag when it ends.
+      s.trail.push([e.timeStamp, s.dx])
+      while (s.trail.length > 1 && e.timeStamp - s.trail[0][0] > 100) s.trail.shift()
       if (!s.axis && Math.hypot(s.dx, s.dy) > 10) {
         s.axis = Math.abs(s.dx) > Math.abs(s.dy) ? 'x' : 'y'
         clearTimeout(s.timer)
@@ -373,6 +456,8 @@ function useSwipe({ onMove, onEnd, hold }) {
       ref.current = null
       if (!s) return
       clearTimeout(s.timer)
+      // How fast the finger was going sideways when it left, in pixels per millisecond.
+      s.vx = (s.dx - s.trail[0][1]) / Math.max(e.timeStamp - s.trail[0][0], 1)
       if (s.held) {
         // No tap after a hold: it would land on whatever is under the finger.
         if (e.cancelable) e.preventDefault()
@@ -998,7 +1083,8 @@ export default function App() {
       seekTo,
       closeTop,
       closeWheel,
-      turnWheel,
+      // The wheel rolls to the next game by itself, then calls turnWheel.
+      rollWheel: (dir) => wheelRef.current?.turn(dir),
       holdStart,
       holdMove,
       holdEnd,
@@ -1033,7 +1119,7 @@ export default function App() {
       } else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
         // In the wheel, the arrows turn to the next game; on the home screen, to the next station.
         const dir = e.code === 'ArrowLeft' ? -1 : 1
-        if (a.wheel) a.turnWheel(dir)
+        if (a.wheel) a.rollWheel(dir)
         else if (!a.layered() && !e.target.closest('.stations')) a.step(dir)
         else return
         e.preventDefault()
@@ -1482,8 +1568,10 @@ export default function App() {
       {wheel && (
         <RadioWheel
           ref={wheelRef}
-          title={EXTRAS[wheel.game] ?? gameLabel(wheel.game)}
-          stations={wheelStations(wheel.game)}
+          pages={[-1, 0, 1].map((step) => {
+            const id = wheelPages[(wheelPages.indexOf(wheel.game) + step + wheelPages.length) % wheelPages.length]
+            return { id, title: EXTRAS[id] ?? gameLabel(id), stations: wheelStations(id) }
+          })}
           currentId={currentId}
           hold={wheel.hold}
           onPick={pickFromWheel}
