@@ -66,7 +66,8 @@ const mix = (hex, share, into) => {
 // Resolves to a blob URL, or to null.
 const tiles = new Map()
 export function tile(station) {
-  if (!station.logo && station.art) return Promise.resolve(null)
+  // Nor does a real station, which doesn't play here.
+  if (station.link || (!station.logo && station.art)) return Promise.resolve(null)
   if (!tiles.has(station.id)) {
     const drawn = station.logo ? withLogo(station).catch(() => withName(station)) : withName(station)
     tiles.set(

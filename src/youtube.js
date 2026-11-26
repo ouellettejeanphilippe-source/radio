@@ -173,6 +173,13 @@ export function useYouTubePlayer(hostRef, live) {
     }
   }, [goLive])
 
+  // Quiet, whatever it was doing: playing, or still tuning in.
+  const pause = useCallback(() => {
+    if (!readyRef.current) return
+    userPausedRef.current = true
+    playerRef.current.pauseVideo()
+  }, [])
+
   const seek = useCallback((t) => {
     if (!readyRef.current) return
     lastRef.current = null
@@ -218,5 +225,5 @@ export function useYouTubePlayer(hostRef, live) {
     }
   }, [])
 
-  return { status, time, volume, heard, resetHeard, load, toggle, seek, skipTo, hop, goLive, setVolume }
+  return { status, time, volume, heard, resetHeard, load, toggle, pause, seek, skipTo, hop, goLive, setVolume }
 }
