@@ -174,9 +174,10 @@ const ROLL = 0.6
 
 // GTA-style radio wheel: a game's logos around a ring, the station's name in the middle.
 // `pages` are the wheel before, the one shown and the one after: { id, title, stations }.
-// Tapped open, a tap on a logo tunes in, and the wheel follows a finger that swipes across it:
-// it rolls aside with the finger while the next game's wheel rolls in, and lets go past a fifth of
-// the screen (or on a flick) finishes the move; short of that, it rolls back. Held open (a finger
+// Tapped open, a press on a logo aims at it and the release tunes in (see startPress); a finger
+// that swipes from anywhere else takes the wheel along: it rolls aside with the finger while the
+// next game's wheel rolls in, and lets go past a fifth of the screen (or on a flick) finishes the
+// move; short of that, it rolls back. Held open (a finger
 // kept on the player, or the Q key), the parent feeds it the pointer through aim() and tunes to
 // aimed() on release; there is only the one wheel then.
 function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
@@ -188,6 +189,9 @@ function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
   // one more turn asked for meanwhile by a key, to make once it has arrived.
   const rolling = useRef(0)
   const queued = useRef(0)
+  // A press that began on a logo, while it lasts: where it began, and whether it has moved since.
+  const press = useRef(null)
+  const [pressing, setPressing] = useState(false)
   const { w, h } = useViewport()
   const stations = pages[1].stations
   const layout = wheelLayout(stations.length, w, h)
@@ -240,21 +244,91 @@ function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
     if (Math.abs(d) >= 8) turn(d > 0 ? 1 : -1)
   }
 
+  // Aims at the logo nearest to a point of the screen, or at none over the middle of the wheel.
+  const aim = (x, y) => {
+    const r = box.current.getBoundingClientRect()
+    const id = stations[aimAt(layout, x - r.left - r.width / 2, y - r.top - r.height / 2)]?.id ?? null
+    if (id === aimed.current) return
+    aimed.current = id
+    setPointed(id)
+    // One tick per logo passed, like a detent.
+    if (id) navigator.vibrate?.(4)
+  }
+  const forget = () => {
+    aimed.current = null
+    setPointed(null)
+  }
+
+  // Pressing a logo doesn't tune yet: it lights up, the light follows the finger (or the mouse)
+  // from logo to logo, and the station it is on when the press lets go is the one that starts.
+  // Let go over the middle of the wheel, the press chooses nothing.
+  const startPress = (id, x, y) => {
+    press.current = { x, y, moved: false }
+    aimed.current = id
+    setPointed(id)
+    setPressing(true)
+    navigator.vibrate?.(4)
+  }
+  const movePress = (x, y) => {
+    const p = press.current
+    // A finger that only trembles stays on the logo it pressed.
+    if (!p.moved && Math.hypot(x - p.x, y - p.y) < 8) return
+    p.moved = true
+    aim(x, y)
+  }
+  const endPress = (tune) => {
+    press.current = null
+    setPressing(false)
+    const st = tune && stations.find((s) => s.id === aimed.current)
+    forget()
+    if (st) onPick(st)
+  }
+  // A touch that starts on a logo of the middle wheel is a press; anywhere else, it rolls the wheels.
+  const touch = {
+    ...swipe,
+    onTouchStart: (e) => {
+      const logo = e.touches.length === 1 && !rolling.current && e.target.closest('.wheel[data-k="0"] .wheel-item')
+      if (logo) return startPress(logo.dataset.id, e.touches[0].clientX, e.touches[0].clientY)
+      // A second finger calls the press off.
+      if (press.current) endPress(false)
+      swipe.onTouchStart(e)
+    },
+    onTouchMove: (e) => (press.current ? movePress(e.touches[0].clientX, e.touches[0].clientY) : swipe.onTouchMove(e)),
+    onTouchEnd: (e) => {
+      if (!press.current) return swipe.onTouchEnd(e)
+      // No tap after the press: it would tune a second time.
+      if (e.cancelable) e.preventDefault()
+      dropNextClick()
+      endPress(true)
+    },
+    onTouchCancel: () => (press.current ? endPress(false) : swipe.onTouchCancel()),
+    onContextMenu: (e) => (press.current ? e.preventDefault() : swipe.onContextMenu(e)),
+  }
+  // The mouse presses the same way. The logo keeps the pointer until the button is let go, so the
+  // press goes on even off the wheel.
+  const mouse = (st) => ({
+    onPointerDown: (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || hold || rolling.current) return
+      e.currentTarget.setPointerCapture(e.pointerId)
+      startPress(st.id, e.clientX, e.clientY)
+    },
+    onPointerMove: (e) => e.pointerType === 'mouse' && press.current && movePress(e.clientX, e.clientY),
+    onPointerUp: (e) => {
+      if (e.pointerType !== 'mouse' || !press.current) return
+      // The click that follows would tune a second time.
+      dropNextClick()
+      endPress(true)
+    },
+    onLostPointerCapture: (e) => e.pointerType === 'mouse' && press.current && endPress(false),
+    // Passing over a logo names it in the middle; not during a press, which names its own.
+    onPointerEnter: () => !hold && !press.current && setPointed(st.id),
+    onPointerLeave: () => !hold && !press.current && setPointed(null),
+  })
+
   useImperativeHandle(ref, () => ({
-    aim(x, y) {
-      const r = box.current.getBoundingClientRect()
-      const id = stations[aimAt(layout, x - r.left - r.width / 2, y - r.top - r.height / 2)]?.id ?? null
-      if (id === aimed.current) return
-      aimed.current = id
-      setPointed(id)
-      // One tick per logo passed, like a detent.
-      if (id) navigator.vibrate?.(4)
-    },
+    aim,
     aimed: () => stations.find((st) => st.id === aimed.current) ?? null,
-    forget() {
-      aimed.current = null
-      setPointed(null)
-    },
+    forget,
     turn: (dir) => turn(dir, true),
   }))
 
@@ -262,7 +336,7 @@ function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
   // either side.
   const shown = hold ? [{ ...pages[1], k: 0 }] : pages.map((pg, i) => ({ ...pg, k: i - 1 }))
   return (
-    <div ref={track} className="wheel-backdrop" onClick={onClose} onWheel={onRoll} role="dialog" aria-modal="true" aria-label="Roue des radios" {...(hold ? {} : swipe)}>
+    <div ref={track} className="wheel-backdrop" onClick={onClose} onWheel={onRoll} role="dialog" aria-modal="true" aria-label="Roue des radios" {...(hold ? {} : touch)}>
       {shown.map((pg) => {
         const here = pg.k === 0
         const at = here ? layout : wheelLayout(pg.stations.length, w, h)
@@ -272,7 +346,7 @@ function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
           <div
             key={pg.id}
             ref={here ? box : undefined}
-            className="wheel"
+            className={`wheel ${here && pressing ? 'pressing' : ''}`}
             data-k={pg.k}
             data-r={at.r}
             inert={!here}
@@ -285,9 +359,9 @@ function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
                   key={st.id}
                   className={`wheel-item ${st.id === currentId ? 'active' : ''} ${here && st.id === pointed ? 'aimed' : ''}`}
                   style={{ left: `calc(50% + ${at.pts[i].x.toFixed(1)}px)`, top: `calc(50% + ${at.pts[i].y.toFixed(1)}px)` }}
+                  data-id={st.id}
                   onClick={() => onPick(st)}
-                  onPointerEnter={() => !hold && setPointed(st.id)}
-                  onPointerLeave={() => !hold && setPointed(null)}
+                  {...mouse(st)}
                   aria-label={st.name}
                 >
                   <Cover station={st} />
@@ -306,7 +380,7 @@ function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
               </div>
               <div className="wheel-name">{named?.name ?? 'Choisis un poste'}</div>
               {named && <div className="wheel-dj">{named.dj || named.genre}</div>}
-              {hold && <div className="wheel-hint">{pointed ? 'Relâche pour syntoniser' : 'Glisse vers un logo'}</div>}
+              {(hold || (here && pressing)) && <div className="wheel-hint">{pointed ? 'Relâche pour syntoniser' : 'Glisse vers un logo'}</div>}
             </div>
           </div>
         )

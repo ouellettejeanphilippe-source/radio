@@ -1306,6 +1306,11 @@ input[type='range']:disabled {
     0 0 0 3px var(--legend),
     0 0 22px rgba(255, 255, 255, 0.4);
 }
+/* During a press, only the logo aimed at comes forward: the one the press began on would
+   otherwise stay raised for as long as the finger is down. */
+.wheel.pressing .wheel-item:not(.aimed) {
+  transform: translate(-50%, -50%);
+}
 .wheel-center {
   position: absolute;
   left: 50%;
@@ -1344,7 +1349,12 @@ input[type='range']:disabled {
   font-size: 13px;
   color: var(--legend-2);
 }
+/* Hung under the names, out of the flow: it comes and goes with each press without moving them. */
 .wheel-hint {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
   margin-top: 12px;
   color: var(--dial);
 }
