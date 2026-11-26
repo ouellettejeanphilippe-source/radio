@@ -16,6 +16,7 @@ Le repo contient l'interface et la liste des stations, sans audio ni logos de je
 - L'app retient les bouts déjà entendus de chaque station. Si on revient sur une station moins de 2 min après l'avoir quittée, ça reprend au même endroit. Sinon ça tombe au hasard dans le plus long bout pas encore entendu, en laissant au moins 5 min de chaque côté (ou pile à son début). Les trous de moins d'une minute comptent comme entendus.
 - « Écoute en direct » (dans « Réglages », désactivée au départ) remplace cette reprise : chaque poste suit l'horloge, donc il a avancé quand on y revient et tout le monde entend le même moment. On ne peut alors plus déplacer l'aiguille.
 - Un grichement de radio joue pendant le changement de poste.
+- Derrière l'accueil, à la place du halo de couleur seul : une image de la ville ou du monde du jeu (Los Santos, Vice City, Night City, le Strip de New Vegas…), et une photo de la vraie ville derrière un poste de Montréal ou de Sherbrooke. Elle est assombrie, plus encore en haut et en bas où sont les mots, pour que l'écran reste calme et que le logo ressorte. Elle n'arrive qu'une fois chargée; sans image (Scarface, créations de fans) ou sans réseau, la nuit unie reste. Les images sont dans `BACKDROP` (`src/stations.js`), avec le cadrage à garder quand l'écran les recadre.
 - « Dans la vraie vie » : les vrais postes de Montréal (27) et de Sherbrooke (11), dans le choix du jeu comme deux villes de plus. L'app ne les joue pas : un poste s'affiche comme les autres (rangée, roue, favoris, recherche), ce qui jouait se tait, et sa touche lecture est un lien qui l'ouvre là où il est en ondes. C'est TuneIn quand TuneIn le diffuse (24 postes); sinon le site du poste, parce que les grands réseaux commerciaux (CKOI, Rythme, Rouge, Énergie, CHOM, Virgin, The Beat) et ICI Première n'y sont plus. Ces postes ne se mêlent pas aux modes « Même époque » et « Aléatoire ».
 - Le mode auto affiche un logo géant et de gros boutons, et garde l'écran allumé. Glisser n'importe où change de poste, toucher le logo ouvre la roue. Ça marche aussi à l'horizontale.
 - Chaque station indique ce qu'il y a dans l'enregistrement : DJ + pubs, DJ, musique seulement ou talk-show. Quand on a la liste des chansons avec les minutages, l'app affiche la chanson en cours (aussi sur l'écran verrouillé) et la liste complète. Ces infos viennent de `src/meta.json`, généré par `node scripts/meta.mjs` à partir des descriptions YouTube. Quand la description n'a pas de minutages (c'est le cas de la plupart des GTA), on peut coller une liste minutée, souvent trouvée dans un commentaire sous la vidéo, dans `scripts/tracklists/<id de la vidéo>.txt`.
@@ -54,6 +55,17 @@ Dans « Réglages », on peut envoyer les chansons écoutées à ListenBrainz et
 ## Stations
 
 Tout est dans `src/stations.js` : jeu, nom, DJ, genre, couleur, vidéo YouTube et logo. Les vrais postes y sont aussi (`REAL`) : fréquence, nom, genre, couleur, identifiant TuneIn et site du poste. Leurs logos viennent de TuneIn, posés sur une plaque claire parce qu'ils sont dessinés pour une page blanche. Un poste sans logo affiche son nom, écrit dans la police de l'app et ajusté pour remplir le carré (`src/sign.js`), ou ses initiales là où l'image est petite, comme sur la roue : la vignette de la vidéo est presque toujours la jaquette du jeu, la même pour tous ses postes. Quand l'enregistrement a une vraie illustration du poste, on ajoute son identifiant à `OWN_ART` et c'est elle qui s'affiche, en pleine résolution.
+
+## Crédits des images
+
+Les logos et les images de fond des jeux viennent des wikis Fandom de chaque jeu; ceux des vrais postes, de TuneIn. Rien de tout ça n'est dans le dépôt : l'app les charge à l'affichage.
+
+Les deux photos de ville viennent de Wikimedia Commons :
+
+- Montréal : « View of downtown Montreal », par Jiaqian AirplaneFan, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0).
+- Sherbrooke : « Sherbrooke, Quebec - centre-ville en automne - 1 », par Cantons-de-l'Est, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0).
+
+Elles sont affichées assombries et recadrées; les crédits sont aussi au bas des réglages.
 
 ## Mises à jour
 

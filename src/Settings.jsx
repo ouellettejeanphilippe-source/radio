@@ -397,6 +397,11 @@ export default function Settings({ count, total, live, onLive, controls, onContr
             </button>
           )}
         </section>
+        {/* The two photographs behind the real cities are under licences that ask for their authors' names. */}
+        <p className="credits">
+          Photos, sur Wikimedia Commons&nbsp;: Montréal par Jiaqian AirplaneFan (CC&nbsp;BY&nbsp;3.0), Sherbrooke par Cantons-de-l'Est
+          (CC&nbsp;BY-SA&nbsp;4.0). Les autres images viennent des wikis des jeux.
+        </p>
       </div>
     </div>
   )

@@ -555,6 +555,56 @@ const LOGOS = {
   'mafia3-wvce-1150': 'https://static.wikia.nocookie.net/mafiagame/images/3/30/WVCE.png/revision/latest',
 }
 
+// --- Backdrops -------------------------------------------------------------------------------
+// A picture of each game's city or world, to hang behind its stations; and of the city itself
+// behind a real one's. From the same wikis as the logos, and from Wikimedia Commons for the two
+// real cities (credits in the README). Asked for 1280 px wide: it sits dimmed behind everything.
+// [path on Fandom's image host, or a whole URL; where to hold the picture when the screen crops it]
+const commons = (path) => `https://upload.wikimedia.org/wikipedia/commons/thumb/${path}/1280px-${path.split('/').pop()}`
+const BACKDROP = {
+  gta6: ['gtawiki/images/e/e4/Artwork-ViceCity-BG-GTAVI.jpg', '18% 50%'],
+  gta5: ['gtawiki/images/5/5a/LosSantos-GTAV-SouthLS.jpg'],
+  gta4e: ['gtawiki/images/f/f4/Algonquin-Panorama-GTAIV.jpg', '72% 50%'],
+  gta4: ['gtawiki/images/f/f4/Algonquin-Panorama-GTAIV.jpg', '34% 50%'],
+  gtacw: ['gtawiki/images/4/4b/GTAChinatownWars-Wallpapers-Biker.jpg', '0% 50%'],
+  gtavcs: ['gtawiki/images/b/b4/VicePoint-GTAVCS.png'],
+  gtalcs: ['gtawiki/images/8/86/CallahanBridge-GTALCS.png'],
+  gtasa: ['gtawiki/images/c/cc/DowntownLosSantos-GTASA-Overview.jpg'],
+  gtavc: ['gtawiki/images/3/36/OceanBeach-GTAVC.png'],
+  gta3: ['gtawiki/images/a/a8/StauntonIsland-GTA3.jpg'],
+  gta2: ['gtawiki/images/7/79/Altamount-GTA2.png'],
+  gtalondon: ['gtawiki/images/e/ef/PalaceofWestminster-GTAL69-3DView.png'],
+  gta1: ['gtawiki/images/d/d5/Poster-GTA1-Original.jpg', '100% 50%'],
+  sr4: ['saintsrow/images/d/df/Saints_Row_IV_Announce_Teaser_-_Steelport_wide.png'],
+  sr3: ['saintsrow/images/b/b7/Downtown_at_night_-_Saints_Row_The_Third_promo.jpg'],
+  sr2: ['saintsrow/images/7/7f/Stilwater_-_Saints_Row_2_concept_art_-_night.png'],
+  sr1: ['saintsrow/images/d/d7/Saints_Row_loading_screen_-_downtown.png'],
+  mafia3: ['mafiagame/images/c/c2/Leaving_New_Bordeaux_1.jpg', '85% 50%'],
+  mafia2: ['mafiagame/images/6/6a/Empire_Bay_3.jpg'],
+  sdogs: ['sleepingdogs/images/d/dc/True-crime-hong-kong-24466-wp.jpg'],
+  fh6: ['forzamotorsport/images/a/a0/FH6_Gameplay_1.jpg'],
+  fh5: ['forzamotorsport/images/5/58/FH5_Guanajuato_Promo_3.jpg'],
+  fh4: ['forzamotorsport/images/8/82/FH4_Edinburgh_Castle.jpg'],
+  fh3: ['forzamotorsport/images/5/53/David-milligan-forzahorizon3-12.jpg'],
+  fh2: ['forzamotorsport/images/3/34/FH2_Nice_2.jpg'],
+  fh1: ['forzamotorsport/images/6/69/FH1_Promo_2.jpg'],
+  wdl: ['watchdogscombined/images/9/9d/London_in_Legion_1.jpg'],
+  wd2: ['watchdogscombined/images/d/d6/Golden_Gate_Tag.jpg'],
+  cp2077: ['cyberpunk/images/a/a3/Night_City_2077.jpg'],
+  fo4: ['fallout/images/a/a8/Fo4-diamond-city-concept2.png'],
+  fonv: ['fallout/images/1/1a/FNV_Strip.jpg'],
+  fo3: ['fallout/images/2/2c/Capital_Wasteland_CA.jpg'],
+  mtl: [commons('1/19/View_of_downtown_Montreal_-_panoramio.jpg')],
+  shb: [commons('2/20/Sherbrooke%2C_Quebec_-_centre-ville_en_automne_-_1.jpg')],
+}
+// { src, at } for a game, or nothing: Scarface and the fan stations keep the plain night.
+export const BACKDROPS = Object.fromEntries(
+  Object.entries(BACKDROP).map(([game, [src, at = '50% 50%']]) => [
+    game,
+    { src: src.startsWith('http') ? src : `https://static.wikia.nocookie.net/${src}/revision/latest/scale-to-width-down/1280`, at },
+  ]),
+)
+
 // --- Real stations ---------------------------------------------------------------------------
 // The radio of two real cities. Nothing of theirs is played here: a station is brought up like
 // any other, and its play key opens it where it is on the air: on TuneIn when TuneIn carries it,
