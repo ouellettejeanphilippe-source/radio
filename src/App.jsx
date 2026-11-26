@@ -169,10 +169,29 @@ function useViewport() {
 }
 
 // GTA-style radio wheel: a game's logos around a ring, the station's name in the middle.
-// Tapped open, a tap on a logo tunes in. Held open (a finger kept on the player, or the Q key),
-// the parent feeds it the pointer through aim() and tunes to aimed() on release.
-function RadioWheel({ ref, title, stations, currentId, hold, onPick, onGame, onClose }) {
+// Tapped open, a tap on a logo tunes in, and a swipe across the wheel turns it to the next game
+// (`turn` says which way it last went, for the ring to come in from that side). Held open (a
+// finger kept on the player, or the Q key), the parent feeds it the pointer through aim() and
+// tunes to aimed() on release.
+function RadioWheel({ ref, title, stations, currentId, hold, turn, onPick, onGame, onClose }) {
   const [pointed, setPointed] = useState(null)
+  // How far a finger has dragged the ring sideways, in pixels.
+  const [drag, setDrag] = useState(0)
+  const swipe = useSwipe({
+    onMove: (s) => setDrag(s.axis === 'x' ? s.dx : 0),
+    onEnd: (s) => {
+      setDrag(0)
+      if (s.axis === 'x' && Math.abs(s.dx) > 50) onGame(s.dx < 0 ? 1 : -1)
+    },
+  })
+  // A mouse wheel or a trackpad turns it too: a notch is a game.
+  const rolled = useRef(0)
+  const onRoll = (e) => {
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+    if (Math.abs(d) < 8 || e.timeStamp - rolled.current < 280) return
+    rolled.current = e.timeStamp
+    onGame(d > 0 ? 1 : -1)
+  }
   const aimed = useRef(null)
   const box = useRef(null)
   const { w, h } = useViewport()
@@ -196,27 +215,30 @@ function RadioWheel({ ref, title, stations, currentId, hold, onPick, onGame, onC
   // A logo pointed at in another game's wheel doesn't count in this one.
   const shown = stations.find((st) => st.id === pointed) ?? stations.find((st) => st.id === currentId)
   return (
-    <div className="wheel-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Roue des radios">
-      <div
-        ref={box}
-        className="wheel"
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: 2 * layout.rx + layout.item, height: 2 * layout.ry + layout.item, '--item': `${layout.item}px` }}
-      >
-        {stations.map((st, i) => (
-          <button
-            key={st.id}
-            className={`wheel-item ${st.id === currentId ? 'active' : ''} ${st.id === pointed ? 'aimed' : ''}`}
-            style={{ left: `calc(50% + ${layout.pts[i].x.toFixed(1)}px)`, top: `calc(50% + ${layout.pts[i].y.toFixed(1)}px)` }}
-            onClick={() => onPick(st)}
-            onPointerEnter={() => !hold && setPointed(st.id)}
-            onPointerLeave={() => !hold && setPointed(null)}
-            aria-label={st.name}
-          >
-            <Cover station={st} />
-          </button>
-        ))}
-        <div className="wheel-center" style={{ width: Math.min(layout.rx, layout.ry) * 1.24 }}>
+    // While a finger holds the wheel open, that finger aims: no swipe then.
+    <div className="wheel-backdrop" onClick={onClose} onWheel={onRoll} role="dialog" aria-modal="true" aria-label="Roue des radios" {...(hold ? {} : swipe)}>
+      <div ref={box} className="wheel" onClick={(e) => e.stopPropagation()} style={{ width: 2 * layout.r + layout.item, height: 2 * layout.r + layout.item, '--item': `${layout.item}px` }}>
+        {/* The ring turns with the finger, and a new game's ring turns in from the side it comes from. */}
+        <div
+          key={title}
+          className={`wheel-ring ${drag ? 'dragging' : ''}`}
+          style={{ '--from': `${turn * 16}deg`, transform: drag ? `rotate(${drag / 5}deg)` : undefined, opacity: drag ? Math.max(0.35, 1 - Math.abs(drag) / 260) : undefined }}
+        >
+          {stations.map((st, i) => (
+            <button
+              key={st.id}
+              className={`wheel-item ${st.id === currentId ? 'active' : ''} ${st.id === pointed ? 'aimed' : ''}`}
+              style={{ left: `calc(50% + ${layout.pts[i].x.toFixed(1)}px)`, top: `calc(50% + ${layout.pts[i].y.toFixed(1)}px)` }}
+              onClick={() => onPick(st)}
+              onPointerEnter={() => !hold && setPointed(st.id)}
+              onPointerLeave={() => !hold && setPointed(null)}
+              aria-label={st.name}
+            >
+              <Cover station={st} />
+            </button>
+          ))}
+        </div>
+        <div className="wheel-center" style={{ width: layout.r * 1.24 }}>
           <div className="wheel-game">
             <button className="ctrl" onClick={() => onGame(-1)} aria-label="Jeu précédent">
               <Icon d={LEFT} size={26} />
@@ -925,7 +947,7 @@ export default function App() {
     setWheel(null)
   }
   function turnWheel(dir) {
-    setWheel((w) => w && { ...w, game: wheelPages[(wheelPages.indexOf(w.game) + dir + wheelPages.length) % wheelPages.length] })
+    setWheel((w) => w && { ...w, dir, game: wheelPages[(wheelPages.indexOf(w.game) + dir + wheelPages.length) % wheelPages.length] })
   }
   function pickFromWheel(st) {
     if (st.id !== loadedId) playStation(st)
@@ -1486,6 +1508,7 @@ export default function App() {
           stations={wheelStations(wheel.game)}
           currentId={currentId}
           hold={wheel.hold}
+          turn={wheel.dir ?? 0}
           onPick={pickFromWheel}
           onGame={turnWheel}
           onClose={closeWheel}

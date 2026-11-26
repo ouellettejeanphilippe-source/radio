@@ -1239,7 +1239,8 @@ input[type='range']:disabled {
   color: var(--dial);
 }
 
-/* GTA radio wheel. wheel.js lays the logos out: a circle, or an oval when a game has many. */
+/* GTA radio wheel. wheel.js lays the logos out, always on a circle; they get smaller when a game
+   has many. */
 .wheel-backdrop {
   position: fixed;
   inset: 0;
@@ -1255,6 +1256,25 @@ input[type='range']:disabled {
 }
 .wheel {
   position: relative;
+}
+/* The ring of logos. It turns under a finger that swipes across the wheel, and a new game's ring
+   turns in from the side it comes from. */
+.wheel-ring {
+  position: absolute;
+  inset: 0;
+  transition:
+    transform 0.2s ease-out,
+    opacity 0.2s;
+  animation: wheel-turn 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.wheel-ring.dragging {
+  transition: none;
+}
+@keyframes wheel-turn {
+  from {
+    opacity: 0;
+    transform: rotate(var(--from, 0deg));
+  }
 }
 .wheel-item {
   position: absolute;
