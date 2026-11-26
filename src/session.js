@@ -1,6 +1,7 @@
 // What the phone gets from the app. The lock screen, the notification, a car's buttons, the voice
 // assistant and launchers like AutoZen all talk to the page's media session (see App.jsx for the
 // title and the keys); this file is what makes that session ours, and its artwork.
+import { SIGN_LINE, sign, signFont } from './sign.js'
 
 // The browser hands those controls to the frame that makes the sound. Here that is YouTube's
 // player, in its iframe, which knows the video's title and nothing about stations: left alone,
@@ -59,13 +60,19 @@ const mix = (hex, share, into) => {
 }
 
 // The station's tile as a PNG, for the lock screen: the wiki's logos are often SVG, which the
-// notification doesn't draw, and they come without the tile the app puts behind them.
-// Resolves to a blob URL, or to null when the station has no logo or it can't be read.
+// notification doesn't draw, and they come without the tile the app puts behind them. A station
+// without a logo gets its name on the tile, as in the app; one whose recording has a picture of
+// its own gets none, and shows that picture instead (see App.jsx).
+// Resolves to a blob URL, or to null.
 const tiles = new Map()
 export function tile(station) {
-  if (!station.logo) return Promise.resolve(null)
+  if (!station.logo && station.art) return Promise.resolve(null)
   if (!tiles.has(station.id)) {
-    tiles.set(station.id, draw(station).catch(() => null))
+    const drawn = station.logo ? withLogo(station).catch(() => withName(station)) : withName(station)
+    tiles.set(
+      station.id,
+      drawn.catch(() => null),
+    )
     // A dozen is plenty for one outing; older ones are let go.
     if (tiles.size > 12) {
       const [oldest, url] = tiles.entries().next().value
@@ -76,7 +83,22 @@ export function tile(station) {
   return tiles.get(station.id)
 }
 
-function draw(station) {
+const SIZE = 512
+// The same tile as in the app: the station's colour from above, fading into the dark.
+function blank(station) {
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = SIZE
+  const c = canvas.getContext('2d')
+  const light = c.createRadialGradient(SIZE / 2, SIZE * 0.35, 0, SIZE / 2, SIZE * 0.35, SIZE * 0.8)
+  light.addColorStop(0, mix(station.color, 0.52, '#15171a'))
+  light.addColorStop(1, '#060708')
+  c.fillStyle = light
+  c.fillRect(0, 0, SIZE, SIZE)
+  return { canvas, c }
+}
+const png = (canvas) => new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(URL.createObjectURL(blob)) : reject(new Error('empty tile'))), 'image/png'))
+
+function withLogo(station) {
   return new Promise((resolve, reject) => {
     const img = new Image()
     // Readable from a canvas, and without a Referer, which the wiki's image host refuses.
@@ -84,24 +106,38 @@ function draw(station) {
     img.referrerPolicy = 'no-referrer'
     img.onerror = reject
     img.onload = () => {
-      const size = 512
-      const canvas = document.createElement('canvas')
-      canvas.width = canvas.height = size
-      const c = canvas.getContext('2d')
-      // The same tile as on the home screen: the station's colour from above, fading into the dark.
-      const light = c.createRadialGradient(size / 2, size * 0.35, 0, size / 2, size * 0.35, size * 0.8)
-      light.addColorStop(0, mix(station.color, 0.52, '#15171a'))
-      light.addColorStop(1, '#060708')
-      c.fillStyle = light
-      c.fillRect(0, 0, size, size)
-      const w = img.naturalWidth || size
-      const h = img.naturalHeight || size
-      const scale = Math.min((size * 0.74) / w, (size * 0.74) / h)
-      c.drawImage(img, (size - w * scale) / 2, (size - h * scale) / 2, w * scale, h * scale)
-      canvas.toBlob((blob) => (blob ? resolve(URL.createObjectURL(blob)) : reject(new Error('empty tile'))), 'image/png')
+      const { canvas, c } = blank(station)
+      const w = img.naturalWidth || SIZE
+      const h = img.naturalHeight || SIZE
+      const scale = Math.min((SIZE * 0.74) / w, (SIZE * 0.74) / h)
+      c.drawImage(img, (SIZE - w * scale) / 2, (SIZE - h * scale) / 2, w * scale, h * scale)
+      png(canvas).then(resolve, reject)
     }
     img.src = station.logo
   })
+}
+
+// The station's name, written as on its sign in the app (see sign.js and .gen-name).
+async function withName(station) {
+  // The display face, if it isn't there yet; without it the name is written in the next one.
+  await document.fonts.load(signFont(SIZE / 4)).catch(() => {})
+  const { canvas, c } = blank(station)
+  const { lines, size } = sign(station.name)
+  // A little smaller than in the app: phones round the tile's corners, some into a circle.
+  const px = size * SIZE * 0.84
+  c.font = signFont(px)
+  c.textAlign = 'center'
+  c.textBaseline = 'middle'
+  c.lineJoin = 'round'
+  c.lineWidth = px * 0.1
+  c.strokeStyle = '#000'
+  c.fillStyle = mix(station.color, 0.6, '#ffffff')
+  lines.forEach((line, i) => {
+    const y = SIZE / 2 + (i - (lines.length - 1) / 2) * px * SIGN_LINE
+    c.strokeText(line, SIZE / 2, y)
+    c.fillText(line, SIZE / 2, y)
+  })
+  return png(canvas)
 }
 
 // Registers one of the phone's keys; null takes it away. Browsers throw on the keys they don't know.
