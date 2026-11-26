@@ -55,6 +55,7 @@ const PLAY = 'M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1
 const PAUSE = 'M6 5h4v14H6zM14 5h4v14h-4z'
 const PREV = 'M6 6h2v12H6zm3.5 6 8.5 6V6z'
 const NEXT = 'M16 6h2v12h-2zM6 18l8.5-6L6 6z'
+const OUTSIDE = 'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z'
 const REPLAY = 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z'
 const VOL = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.47 4.47 0 0 0 2.5-4z'
 const MUTE = 'M3 9v6h4l5 5V4L7 9H3zm13.59 3L19 9.59 17.59 8.17 15.17 10.6 12.76 8.17 11.34 9.59 13.76 12l-2.42 2.41 1.42 1.42 2.41-2.42 2.42 2.42L19 14.41z'
@@ -96,7 +97,10 @@ function Cover({ station, big, className = '' }) {
   const isLogo = src && src === station.logo
   if (src) {
     return (
-      <div className={`cover ${isLogo ? 'cover--logo' : 'cover--thumb'} ${isLogo && tiny ? 'cover--pixel' : ''} ${className}`} style={{ '--c': station.color }}>
+      <div
+        className={`cover ${isLogo ? 'cover--logo' : 'cover--thumb'} ${isLogo && tiny ? 'cover--pixel' : ''} ${isLogo && station.paper ? 'cover--paper' : ''} ${className}`}
+        style={{ '--c': station.color }}
+      >
         {/* Fandom's image host refuses requests that carry a foreign Referer. */}
         <img
           src={src}
@@ -481,7 +485,12 @@ const STATIONS_PLAYABLE = STATIONS.map((st) => {
   // Which lines are songs, as opposed to ads, DJ talk and news.
   const songs = tracks?.map(([, title]) => Boolean(parseSong(title, videoId)))
   return { ...st, videoId, talk: talkOf(st, videoId), tracks, songs, search }
-}).filter((st) => st.videoId)
+}).filter((st) => st.videoId || st.link)
+// The ones with a recording, as opposed to the real stations, which open elsewhere: what the
+// shuffle, the eras and the counts are about.
+const RECORDINGS = STATIONS_PLAYABLE.filter((st) => st.videoId)
+// Where a real station is on the air, as its play key says it.
+const outside = (st) => (st.on === 'TuneIn' ? 'TuneIn' : 'son site')
 // The games that have something to play, in the order of the home screen.
 const GAME_IDS = GAMES.map((g) => g.id).filter((id) => STATIONS_PLAYABLE.some((st) => st.game === id))
 const eraLabel = (id) => ERAS.find((e) => e.id === id)?.name
@@ -594,7 +603,7 @@ function useWakeLock() {
 
 // Car screen: giant logo and buttons, swipe anywhere to change station, tap the logo (or hold
 // anywhere) for the wheel.
-function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, hold, onFav, onToggle, onStep, onWheel, onClose }) {
+function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, hold, onFav, onToggle, onOutside, onStep, onWheel, onClose }) {
   const [dragX, setDragX] = useState(0)
   useWakeLock()
   const swipe = useSwipe({
@@ -640,9 +649,15 @@ function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, 
         <button className="drive-btn" onClick={() => onStep(-1)} aria-label="Station précédente">
           <Icon d={PREV} size={48} />
         </button>
-        <button className="drive-btn drive-btn--main" onClick={onToggle} aria-label="Lecture / pause">
-          <Icon d={playIcon} size={56} />
-        </button>
+        {station?.link ? (
+          <a className="drive-btn drive-btn--main" href={station.link} target="_blank" rel="noopener" onClick={onOutside} aria-label={`Écouter ${station.name} sur ${outside(station)}`}>
+            <Icon d={OUTSIDE} size={48} />
+          </a>
+        ) : (
+          <button className="drive-btn drive-btn--main" onClick={onToggle} aria-label="Lecture / pause">
+            <Icon d={playIcon} size={56} />
+          </button>
+        )}
         <button className="drive-btn" onClick={() => onStep(1)} aria-label="Station suivante">
           <Icon d={NEXT} size={48} />
         </button>
@@ -881,7 +896,7 @@ function GamePicker({ stations, currentId, favStations, recentStations, onGame, 
                     <button key={g.id} className="game-key" onClick={() => onGame(g.id)} aria-current={current?.game === g.id ? 'true' : undefined}>
                       <b>{g.name}</b>
                       <small>
-                        {g.count} poste{g.count > 1 ? 's' : ''} · {eraLabel(g.era)}
+                        {g.count} poste{g.count > 1 ? 's' : ''} · {g.series === 'real' ? 'FM et AM' : eraLabel(g.era)}
                       </small>
                     </button>
                   ))}
@@ -918,7 +933,7 @@ export default function App() {
   // The sheet where a game is chosen.
   const [picking, setPicking] = useState(false)
   // « Aléatoire » follows one shuffled order per visit, so that going back is going back.
-  const [shuffled] = useState(() => shuffle(STATIONS_PLAYABLE))
+  const [shuffled] = useState(() => shuffle(RECORDINGS))
   const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
   const [loadedId, setLoadedId] = useState(null)
   const [mode, setMode] = useState(() => readJson(MODE_KEY, 'game'))
@@ -1018,20 +1033,42 @@ export default function App() {
   }
 
   function playStation(st) {
-    if (st.id === loadedId) return yt.toggle()
-    tune(st)
+    if (st.link) return bringUp(st)
+    if (st.id !== loadedId) return tune(st)
+    if (st.id === currentId) return yt.toggle()
+    // Back on the station that was left for a real one: it carries on.
+    setCurrentId(st.id)
+    if (!isPlaying) yt.toggle()
   }
+  // A real station isn't played here: it comes up on the screen, whatever was playing goes quiet,
+  // and its play key opens it where it is on the air.
+  function bringUp(st) {
+    yt.pause()
+    setCurrentId(st.id)
+  }
+  const remember = (st) => setRecent((list) => [st.id, ...list.filter((id) => id !== st.id)].slice(0, 12))
 
   function togglePlay() {
     if (!current) return stations[0] && playStation(stations[0])
-    if (isCurrentLoaded) yt.toggle()
+    if (current.link) {
+      // From the keyboard; the key on the screen is a link of its own.
+      remember(current)
+      window.open(current.link, '_blank', 'noopener')
+    } else if (isCurrentLoaded) yt.toggle()
     else tune(current)
   }
 
   // The stations in a row with the current one, in the chosen mode: its game's, its era's, or
   // all of them in this visit's shuffled order. It is what the home screen's row shows, and what
   // previous / next walk through.
-  const row = !current ? stations : mode === 'random' ? shuffled : stations.filter((st) => st[mode] === current[mode])
+  // A real station's row is always its city's, and no other row has real stations in it.
+  const row = !current
+    ? stations
+    : current.link || mode === 'game'
+      ? stations.filter((st) => st.game === current.game)
+      : mode === 'random'
+        ? shuffled
+        : RECORDINGS.filter((st) => st[mode] === current[mode])
 
   function step(dir) {
     if (!row.length) return
@@ -1058,6 +1095,8 @@ export default function App() {
 
   function setPlaying(want) {
     if (!current) return want && stations[0] && playStation(stations[0])
+    // A key of the phone can't open another app.
+    if (current.link) return
     if (!isCurrentLoaded) return want && tune(current)
     if (want !== isPlaying) yt.toggle()
   }
@@ -1402,7 +1441,7 @@ export default function App() {
   const sheetSwipe = useSwipe({
     onEnd: (s) => {
       if (s.axis === 'x' && !s.strip && Math.abs(s.dx) > 70) step(s.dx < 0 ? 1 : -1)
-      else if (s.axis === 'y' && s.dy < -70 && current) setDetails(true)
+      else if (s.axis === 'y' && s.dy < -70 && current && !current.link) setDetails(true)
     },
     hold,
   })
@@ -1424,9 +1463,24 @@ export default function App() {
       <button className="ctrl" title="Station précédente" aria-label="Station précédente" onClick={() => step(-1)}>
         <Icon d={PREV} />
       </button>
-      <button className="ctrl ctrl--main" title="Lecture / pause (espace)" aria-label="Lecture / pause" onClick={togglePlay}>
-        <Icon d={playIcon} />
-      </button>
+      {current?.link ? (
+        // A real station plays elsewhere: its key is the way there.
+        <a
+          className="ctrl ctrl--main"
+          href={current.link}
+          target="_blank"
+          rel="noopener"
+          onClick={() => remember(current)}
+          title={`Écouter sur ${outside(current)}`}
+          aria-label={`Écouter ${current.name} sur ${outside(current)}`}
+        >
+          <Icon d={OUTSIDE} />
+        </a>
+      ) : (
+        <button className="ctrl ctrl--main" title="Lecture / pause (espace)" aria-label="Lecture / pause" onClick={togglePlay}>
+          <Icon d={playIcon} />
+        </button>
+      )}
       <button className="ctrl" title="Station suivante" aria-label="Station suivante" onClick={() => step(1)}>
         <Icon d={NEXT} />
       </button>
@@ -1502,7 +1556,7 @@ export default function App() {
         {/* What's on, in a corner, and one key. Touching the text or the dial opens the details. */}
         <div className="now">
           <div className="now-main">
-            <button className="now-text" onClick={() => setDetails(true)} disabled={!current} title="Liste des chansons, cadran et vidéo">
+            <button className="now-text" onClick={() => setDetails(true)} disabled={!current || Boolean(current.link)} title="Liste des chansons, cadran et vidéo">
               <span className="now-name">
                 {current && <Bars />}
                 {current?.name ?? 'Choisis un poste'}
@@ -1543,15 +1597,20 @@ export default function App() {
             </button>
           </div>
         </div>
-        <button className="sheet-dial" onClick={() => setDetails(true)} disabled={!current} aria-label="Cadran, liste des chansons et vidéo">
-          <span className="player-dial" style={{ '--pct': `${pct}%` }}>
-            <i />
-          </span>
-        </button>
+        {current?.link ? (
+          // No recording, so no dial: where the station is on the air instead.
+          <p className="sheet-dial sheet-outside legend">En ondes sur {current.on === 'TuneIn' ? 'TuneIn' : 'le site du poste'}</p>
+        ) : (
+          <button className="sheet-dial" onClick={() => setDetails(true)} disabled={!current} aria-label="Cadran, liste des chansons et vidéo">
+            <span className="player-dial" style={{ '--pct': `${pct}%` }}>
+              <i />
+            </span>
+          </button>
+        )}
       </main>
 
       {/* Behind the dial: the video, the list of songs, the full dial and the swipe mode. */}
-      {details && current && (
+      {details && current && !current.link && (
         <div className="details" style={{ '--accent': current.color }} inert={wheelLayer || settingsOpen} {...detailsSwipe}>
           <div className="details-inner">
             <div className="sheet-top">
@@ -1616,6 +1675,7 @@ export default function App() {
           hold={hold}
           onFav={() => current && toggleFav(current)}
           onToggle={togglePlay}
+          onOutside={() => current && remember(current)}
           onStep={step}
           onWheel={openWheel}
           onClose={() => setDrive(false)}
@@ -1625,7 +1685,7 @@ export default function App() {
       {settingsOpen && (
         <Settings
           count={countScrobblable(stations)}
-          total={stations.length}
+          total={RECORDINGS.length}
           live={live}
           onLive={changeLive}
           controls={controls}

@@ -15,6 +15,8 @@
   --dial-ink: #1b1204;
   --needle: #ff4a3d;
   --display: 'Pricedown Bl', 'Impact', 'Arial Black', sans-serif;
+  /* The plate behind a real station's logo: a page, but not a lamp in the car at night. */
+  --paper: #e4e1da;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: var(--legend);
   background: var(--asphalt);
@@ -321,6 +323,15 @@ label {
 }
 .cover--pixel img {
   image-rendering: pixelated;
+}
+/* A real station's logo was drawn for a white page, and some are black on nothing: it gets its
+   page, as a plate. */
+.cover--paper {
+  background: var(--paper);
+}
+.cover--paper img {
+  padding: 9%;
+  filter: none;
 }
 /* No picture: the station's name, written out as a sign in its colour and sized to fill the
    square (--fit, from sign.js). Where the cover is small, as on the wheel, its initials. */
@@ -812,6 +823,26 @@ input[type='range']:disabled {
 .station.is-near .cover--gen {
   filter: drop-shadow(0 0 26px color-mix(in srgb, var(--c) 58%, transparent)) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.6));
 }
+/* The plate of a real station stays a plate, a little smaller than the square it sits in. */
+.station .cover--paper {
+  width: 82%;
+  height: 82%;
+  margin: 9%;
+  background: var(--paper);
+  border-radius: 18%;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+}
+.station.is-near .cover--paper {
+  box-shadow:
+    0 0 34px color-mix(in srgb, var(--c) 55%, transparent),
+    0 10px 24px rgba(0, 0, 0, 0.6);
+}
+.station .cover.cover--paper img,
+.station.is-near .cover.cover--paper img {
+  padding: 9%;
+  filter: none;
+}
 /* A recording's own picture is shown whole, as wide as a logo would be. */
 .station .cover--thumb {
   display: grid;
@@ -952,6 +983,13 @@ input[type='range']:disabled {
   position: relative;
   height: 32px;
   margin: 0 max(20px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(20px, env(safe-area-inset-left));
+}
+/* In the dial's place, for a real station: where it is on the air. */
+.sheet-outside {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--legend-3);
 }
 .sheet-dial .player-dial {
   left: 0;
@@ -1365,6 +1403,10 @@ input[type='range']:disabled {
   height: 100%;
   border-radius: 50%;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+/* A plate, cut round: its logo stays clear of the edge. */
+.wheel-item .cover--paper img {
+  padding: 17%;
 }
 .wheel-item:hover,
 .wheel-item:focus-visible {

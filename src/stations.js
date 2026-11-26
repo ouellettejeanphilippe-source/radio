@@ -1,4 +1,5 @@
-// youtube: URL or video ID of a full station recording (music + DJ + ads). Stations without one are hidden.
+// youtube: URL or video ID of a full station recording (music + DJ + ads). Stations without one are hidden,
+// except the real ones, which open elsewhere (`link`, see REAL below).
 // logo: optional image URL. Without one, the station's name is written out (see OWN_ART below).
 // era: when the game takes place (not when its music is from).
 export const ERAS = [
@@ -13,7 +14,7 @@ export const ERAS = [
 ]
 
 // The series, for the headings of the game picker. A game outside any series has none.
-export const SERIES = { gta: 'GTA', sr: 'Saints Row', mafia: 'Mafia', fh: 'Forza Horizon', wd: 'Watch Dogs', fo: 'Fallout' }
+export const SERIES = { gta: 'GTA', sr: 'Saints Row', mafia: 'Mafia', fh: 'Forza Horizon', wd: 'Watch Dogs', fo: 'Fallout', real: 'Dans la vraie vie' }
 
 export const GAMES = [
   { id: 'gta6', name: 'GTA VI', era: '2020s', series: 'gta' },
@@ -50,6 +51,9 @@ export const GAMES = [
   { id: 'fonv', name: 'Fallout: New Vegas', era: 'future', series: 'fo' },
   { id: 'fo3', name: 'Fallout 3', era: 'future', series: 'fo' },
   { id: 'fans', name: 'Créations de fans', era: '2010s' },
+  // Two real cities and their real radio (see REAL below).
+  { id: 'mtl', name: 'Montréal', era: '2020s', series: 'real' },
+  { id: 'shb', name: 'Sherbrooke', era: '2020s', series: 'real' },
 ]
 
 // Fandom image URL; these hosts only serve hotlinked images without a Referer (see Cover in App.jsx).
@@ -551,6 +555,70 @@ const LOGOS = {
   'mafia3-wvce-1150': 'https://static.wikia.nocookie.net/mafiagame/images/3/30/WVCE.png/revision/latest',
 }
 
+// --- Real stations ---------------------------------------------------------------------------
+// The radio of two real cities. Nothing of theirs is played here: a station is brought up like
+// any other, and its play key opens it where it is on the air: on TuneIn when TuneIn carries it,
+// on the station's own site otherwise (the large commercial networks have left TuneIn).
+// tunein: the station's id there. listen: false when TuneIn lists it without carrying it; the id
+// is kept for the logo. logo: false when TuneIn has none, or the id of another station's.
+// Checked against TuneIn's directory in November 2026.
+const tuneinLogo = (id) => `https://cdn-profiles.tunein.com/${id}/images/logog.png`
+const real = (game, freq, name, genre, color, { tunein, listen = true, site, logo = tunein } = {}) => ({
+  id: `${game}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
+  game,
+  name,
+  // Where a game's station has its DJ, a real one has its place on the dial.
+  dj: `${freq.replace('.', ',')}\u00a0${freq.includes('.') ? 'FM' : 'AM'}`,
+  genre,
+  color,
+  youtube: '',
+  logo: logo ? tuneinLogo(logo) : '',
+  // Its logo was drawn for a white page: it gets one.
+  paper: true,
+  link: tunein && listen ? `https://tunein.com/radio/${tunein}/` : site,
+  on: tunein && listen ? 'TuneIn' : 'site',
+})
+const REAL = [
+  real('mtl', '88.5', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { tunein: 's25436' }),
+  real('mtl', '89.3', 'CISM', 'Universitaire', '#c9a400', { tunein: 's24807' }),
+  real('mtl', '89.9', 'KIC Country', 'Country', '#2e7d32', { tunein: 's148941' }),
+  real('mtl', '90.3', 'CKUT', 'Universitaire', '#e65100', { tunein: 's31297', logo: false }),
+  real('mtl', '91.3', 'Radio VM', 'Classique / Spirituel', '#1565c0', { tunein: 's16572', logo: false }),
+  real('mtl', '91.9', 'BPM Sports', 'Sports', '#00a651', { tunein: 's47769', logo: false }),
+  real('mtl', '92.5', 'The Beat', 'Pop', '#e91e63', { site: 'https://www.thebeat925.ca/' }),
+  real('mtl', '93.5', 'CBC Music', 'Éclectique', '#00838f', { tunein: 's16700', logo: false }),
+  real('mtl', '94.3', 'Énergie', 'Rock / Pop', '#f9a825', { site: 'https://www.radioenergie.ca/montreal/' }),
+  real('mtl', '95.1', 'ICI Première', 'Nouvelles / Talk', '#d32f2f', { site: 'https://ici.radio-canada.ca/ohdio/premiere' }),
+  real('mtl', '95.9', 'Virgin Radio', 'Pop', '#e10a0a', { tunein: 's31213', listen: false, site: 'https://www.virginradio.ca/montreal/' }),
+  real('mtl', '96.9', 'CKOI', 'Pop', '#e21b23', { tunein: 's24774', listen: false, site: 'https://www.ckoi.com/' }),
+  real('mtl', '97.7', 'CHOM', 'Rock', '#546e7a', { tunein: 's31168', listen: false, site: 'https://www.chom.com/' }),
+  real('mtl', '98.5', '98,5', 'Nouvelles / Talk', '#1e3a8a', { tunein: 's12468' }),
+  real('mtl', '99.5', '99,5', 'Talk', '#283593', { tunein: 's43899' }),
+  real('mtl', '100.1', 'CKVL', 'Communautaire', '#e65100', { tunein: 's97799' }),
+  real('mtl', '100.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { tunein: 's1917' }),
+  real('mtl', '101.5', 'CIBL', 'Communautaire', '#00897b', { tunein: 's24677', logo: false }),
+  real('mtl', '102.3', 'Radio Centre-Ville', 'Communautaire', '#8e24aa', { tunein: 's24681', logo: false }),
+  real('mtl', '103.7', 'K103', 'Country', '#b71c1c', { tunein: 's64954' }),
+  real('mtl', '105.1', 'Mike FM', 'Multilingue', '#f57c00', { tunein: 's100845', logo: false }),
+  real('mtl', '105.7', 'Rythme FM', 'Pop', '#9c27b0', { tunein: 's31119', listen: false, site: 'https://www.rythmefm.com/montreal' }),
+  real('mtl', '107.3', 'Rouge FM', 'Pop', '#d50000', { site: 'https://www.rougefm.ca/montreal/' }),
+  real('mtl', '690', 'TSN 690', 'Sports', '#f9a825', { tunein: 's12472' }),
+  real('mtl', '800', 'CJAD 800', 'Nouvelles / Talk', '#d81b60', { tunein: 's31204' }),
+  real('mtl', '1410', 'CPAM', 'Multilingue', '#1565c0', { tunein: 's7761' }),
+  real('mtl', '1690', 'CJLO', 'Universitaire', '#37474f', { tunein: 's24823' }),
+  real('shb', '88.3', 'CFAK', 'Universitaire', '#2e7d32', { site: 'https://cfak.ca/' }),
+  real('shb', '88.9', 'CJMQ', 'Communautaire', '#00838f', { tunein: 's24836', logo: false }),
+  real('shb', '89.7', 'CBC Music', 'Éclectique', '#00838f', { tunein: 's12499', logo: false }),
+  real('shb', '90.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { tunein: 's55444' }),
+  real('shb', '91.7', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { tunein: 's12501', logo: 's25436' }),
+  real('shb', '93.7', 'Rythme FM', 'Pop', '#9c27b0', { site: 'https://www.rythmefm.com/estrie' }),
+  real('shb', '95.5', 'CFLX', 'Communautaire', '#ef6c00', { tunein: 's12503', listen: false, site: 'https://cflx.qc.ca/', logo: false }),
+  real('shb', '101.1', 'ICI Première', 'Nouvelles / Talk', '#d32f2f', { site: 'https://ici.radio-canada.ca/ohdio/premiere' }),
+  real('shb', '102.7', 'Rouge FM', 'Pop', '#d50000', { site: 'https://www.rougefm.ca/estrie/' }),
+  real('shb', '106.1', 'Énergie', 'Rock / Pop', '#f9a825', { site: 'https://www.radioenergie.ca/estrie/' }),
+  real('shb', '107.7', '107,7 Estrie', 'Nouvelles / Talk', '#1e3a8a', { tunein: 's24769' }),
+]
+
 // Stations without a logo whose recording carries a picture of their own (fan stations, a few
 // uploads): it stands in for the logo. For all the others the video's picture is the game's box
 // art, the same on every station of the game, and the app writes the station's name instead.
@@ -566,7 +634,7 @@ const OWN_ART = [
   'fans-unit51-fm',
 ]
 
-export const STATIONS = LIST.map((st) => ({
+export const STATIONS = [...LIST, ...REAL].map((st) => ({
   ...st,
   era: GAMES.find((g) => g.id === st.game).era,
   logo: st.logo || (LOGOS[st.id] ? (LOGOS[st.id].startsWith('http') ? LOGOS[st.id] : wiki(LOGOS[st.id])) : ''),
