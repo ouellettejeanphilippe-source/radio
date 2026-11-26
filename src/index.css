@@ -1254,27 +1254,22 @@ input[type='range']:disabled {
   -webkit-user-select: none;
   user-select: none;
 }
+/* Three wheels share the middle of the screen: the one shown, and the games before and after it,
+   one screen away on either side. They follow a finger that swipes across (RadioWheel moves them),
+   rolling as they go; `gliding` is for when they finish the move, or roll back, on their own. */
 .wheel {
   position: relative;
+  grid-area: 1 / 1;
 }
-/* The ring of logos. It turns under a finger that swipes across the wheel, and a new game's ring
-   turns in from the side it comes from. */
 .wheel-ring {
   position: absolute;
   inset: 0;
+}
+.gliding .wheel,
+.gliding .wheel-ring {
   transition:
-    transform 0.2s ease-out,
-    opacity 0.2s;
-  animation: wheel-turn 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.wheel-ring.dragging {
-  transition: none;
-}
-@keyframes wheel-turn {
-  from {
-    opacity: 0;
-    transform: rotate(var(--from, 0deg));
-  }
+    transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.24s;
 }
 .wheel-item {
   position: absolute;
