@@ -1,5 +1,5 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
-import { ERAS, GAMES, SERIES, STATIONS } from './stations.js'
+import { BACKDROPS, ERAS, GAMES, SERIES, STATIONS } from './stations.js'
 import { parseYouTubeId, useYouTubePlayer } from './youtube.js'
 import { heardRatio } from './heard.js'
 import { startStatic } from './static.js'
@@ -125,6 +125,27 @@ function Cover({ station, big, className = '' }) {
     <div className={`cover cover--gen ${className}`} style={{ '--c': station.color, '--fit': (size * 100).toFixed(1) }}>
       <span className="gen-name">{lines.join('\n')}</span>
       <span className="gen-initials">{initials(station.name)}</span>
+    </div>
+  )
+}
+
+// The picture behind the home screen: the game's city, or the real one. It comes in once it has
+// loaded, over the plain night, which is also what stays when there is none or it can't be had.
+function Backdrop({ game }) {
+  const picture = BACKDROPS[game]
+  const [shown, setShown] = useState(null)
+  if (!picture) return null
+  return (
+    <div key={game} className={`backdrop ${shown === game ? 'is-in' : ''}`}>
+      <img
+        src={picture.src}
+        style={{ objectPosition: picture.at }}
+        alt=""
+        decoding="async"
+        draggable={false}
+        referrerPolicy="no-referrer"
+        onLoad={() => setShown(game)}
+      />
     </div>
   )
 }
@@ -1519,6 +1540,7 @@ export default function App() {
         inert={anyLayer}
         {...sheetSwipe}
       >
+        {current && <Backdrop game={current.game} />}
         <header className="sheet-top">
           <h1 className="sheet-game">
             <button className="game-name" onClick={() => setPicking(true)} title="Choisir un jeu">
