@@ -565,28 +565,28 @@ const LOGOS = {
 // [path on Fandom's image host, or a whole URL; where to hold the picture when the screen crops it]
 const commons = (path) => `https://upload.wikimedia.org/wikipedia/commons/thumb/${path}/1280px-${path.split('/').pop()}`
 const BACKDROP = {
-  gta6: ['gtawiki/images/e/e4/Artwork-ViceCity-BG-GTAVI.jpg', '18% 50%'],
+  gta6: ['gtawiki/images/f/fa/OfficialScreenshots-GTAVI-PromotionalWebsite-ViceCity-SS8.jpg', '45% 50%'],
   gta5: ['gtawiki/images/5/5a/LosSantos-GTAV-SouthLS.jpg'],
-  gta4e: ['gtawiki/images/f/f4/Algonquin-Panorama-GTAIV.jpg', '72% 50%'],
-  gta4: ['gtawiki/images/f/f4/Algonquin-Panorama-GTAIV.jpg', '34% 50%'],
+  gta4e: ['gtawiki/images/e/e4/LibertyCity-GTAIV-Skyline.png', '70% 50%'],
+  gta4: ['gtawiki/images/0/03/Algonquin-GTAIV-South.png', '55% 50%'],
   gtacw: ['gtawiki/images/4/4b/GTAChinatownWars-Wallpapers-Biker.jpg', '0% 50%'],
   gtavcs: ['gtawiki/images/b/b4/VicePoint-GTAVCS.png'],
   gtalcs: ['gtawiki/images/8/86/CallahanBridge-GTALCS.png'],
-  gtasa: ['gtawiki/images/c/cc/DowntownLosSantos-GTASA-Overview.jpg'],
-  gtavc: ['gtawiki/images/3/36/OceanBeach-GTAVC.png'],
-  gta3: ['gtawiki/images/a/a8/StauntonIsland-GTA3.jpg'],
+  gtasa: ['gtawiki/images/7/7c/GTATrilogy-GTASAde-GroveStreetGames-Screenshot1.jpg', '36% 50%'],
+  gtavc: ['gtawiki/images/a/a8/GTATrilogy-GTAVCde-Playstation5-Screenshot2.jpg', '62% 50%'],
+  gta3: ['gtawiki/images/2/28/GTATrilogy-GTAIIIde-MicrosoftStore-Screenshot1.jpg', '52% 50%'],
   gta2: ['gtawiki/images/7/79/Altamount-GTA2.png'],
   gtalondon: ['gtawiki/images/e/ef/PalaceofWestminster-GTAL69-3DView.png'],
   gta1: ['gtawiki/images/d/d5/Poster-GTA1-Original.jpg', '100% 50%'],
-  sr4: ['saintsrow/images/d/df/Saints_Row_IV_Announce_Teaser_-_Steelport_wide.png'],
+  sr4: ['saintsrow/images/7/77/Saints_Row_IV_promo_-_Crossing_the_Delaware.jpg', '82% 50%'],
   sr3: ['saintsrow/images/b/b7/Downtown_at_night_-_Saints_Row_The_Third_promo.jpg'],
   sr2: ['saintsrow/images/7/7f/Stilwater_-_Saints_Row_2_concept_art_-_night.png'],
   sr1: ['saintsrow/images/d/d7/Saints_Row_loading_screen_-_downtown.png'],
-  mafia3: ['mafiagame/images/c/c2/Leaving_New_Bordeaux_1.jpg', '85% 50%'],
+  mafia3: ['mafiagame/images/a/a8/French_Ward_Concept_Art_01.jpg', '30% 50%'],
   mafia2: ['mafiagame/images/6/6a/Empire_Bay_3.jpg'],
   sdogs: ['sleepingdogs/images/d/dc/True-crime-hong-kong-24466-wp.jpg'],
-  fh6: ['forzamotorsport/images/a/a0/FH6_Gameplay_1.jpg'],
-  fh5: ['forzamotorsport/images/5/58/FH5_Guanajuato_Promo_3.jpg'],
+  fh6: ['forzamotorsport/images/0/06/FH6_Tokyo_Park_Promo.jpg', '45% 50%'],
+  fh5: ['forzamotorsport/images/6/63/Seth-brown-13-harry-b-asset-guanajuato.jpg', '78% 50%'],
   fh4: ['forzamotorsport/images/8/82/FH4_Edinburgh_Castle.jpg'],
   fh3: ['forzamotorsport/images/5/53/David-milligan-forzahorizon3-12.jpg'],
   fh2: ['forzamotorsport/images/3/34/FH2_Nice_2.jpg'],
@@ -609,7 +609,7 @@ const BACKDROP = {
 export const BACKDROPS = Object.fromEntries(
   Object.entries(BACKDROP).map(([game, [src, at = '50% 50%']]) => [
     game,
-    { src: src.startsWith('http') ? src : `https://static.wikia.nocookie.net/${src}/revision/latest/scale-to-width-down/1280`, at },
+    { src: src.startsWith('http') ? src : `https://static.wikia.nocookie.net/${src}/revision/latest/scale-to-width-down/1920`, at },
   ]),
 )
 
