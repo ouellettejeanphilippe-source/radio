@@ -111,3 +111,13 @@ export function pickStart(rec, d) {
   const offset = room > 0 && Math.random() > 0.25 ? MIN_BLOCK + Math.random() * room : 0
   return { start: (best.start + offset) % d, reset: false }
 }
+
+// Where to start a show, which unlike a station's loop has a beginning: from the top the first
+// time, then where it was left. Once it has been left at its end: at the first stretch that wasn't
+// heard, and from the top again when there is none.
+export function pickShowStart(rec, d) {
+  if (rec?.p != null && rec.p < d - 30) return { start: rec.p, reset: false }
+  const iv = merge((rec?.iv ?? []).map(([a, b]) => [Math.max(0, a), Math.min(d, b)]).filter(([a, b]) => b > a), d)
+  if (!iv.length || iv[0][0] > 0) return { start: 0, reset: false }
+  return iv[0][1] < d ? { start: iv[0][1], reset: false } : { start: 0, reset: true }
+}

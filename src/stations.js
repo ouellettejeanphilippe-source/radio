@@ -50,7 +50,8 @@ export const GAMES = [
   { id: 'fo4', name: 'Fallout 4', era: 'future', series: 'fo' },
   { id: 'fonv', name: 'Fallout: New Vegas', era: 'future', series: 'fo' },
   { id: 'fo3', name: 'Fallout 3', era: 'future', series: 'fo' },
-  { id: 'fans', name: 'Créations de fans', era: '2010s' },
+  // Not a game: a monthly show from a basement in East London (see BIG_CUPPA below).
+  { id: 'bigcuppa', name: 'Big Cuppa Radio', era: '2020s', what: 'émissions', where: 'Londres' },
   // Two real cities and their real radio (see REAL below).
   { id: 'mtl', name: 'Montréal', era: '2020s', series: 'real' },
   { id: 'shb', name: 'Sherbrooke', era: '2020s', series: 'real' },
@@ -62,6 +63,8 @@ export const GAMES = [
 
 // Fandom image URL; these hosts only serve hotlinked images without a Referer (see Cover in App.jsx).
 const fandom = (wiki, path) => `https://static.wikia.nocookie.net/${wiki}/images/${path}/revision/latest`
+// Mixcloud's pictures, at the size asked for.
+const MC = (size, path) => `https://thumbnailer.mixcloud.com/unsafe/${size}x${size}/extaudio/${path}`
 const SR = (path) => fandom('saintsrow', path)
 const CP = (path) => fandom('cyberpunk', path)
 const FO = (path) => fandom('fallout', path)
@@ -404,12 +407,6 @@ const LIST = [
   s('fo4', 'Diamond City Radio', 'Travis Miles', 'Swing / Rock’n’roll', '#16a085', '_YQ63hOlF00', FO('4/4f/Diamond_City_Temporary_Logo.png')),
   s('fo4', 'Raider Radio', 'RedEye', 'Folk', '#c0392b', '37zkp8iWd_k'),
 
-  // Fan-made shows in the GTA style (original DJ voice work and fake ads); dj = creator.
-  s('fans', 'Peachead Radio', 'Sackooba', 'Électro / Indie', '#ff9f43', 'haEa7y620NU'),
-  s('fans', 'LS Live Radio : After Dark', 'LS Live Radio', 'Talk', '#5f27cd', 'L8-0GrH4dKU'),
-  s('fans', 'LS Live Radio : Voices of Los Santos', 'LS Live Radio', 'Talk', '#341f97', 'pPrF_T2oo4g'),
-  s('fans', 'LS Live Radio : Halloween', 'LS Live Radio', 'Talk', '#e15f41', 'u9XmHUsgOuM'),
-  s('fans', 'Unit51 FM', 'LS Live Radio', 'Éclectique', '#10ac84', 'pSsa6ObdJrU'),
 ]
 
 // Logos from the GTA Wiki (Fandom); paths are relative to its image host.
@@ -603,8 +600,10 @@ const BACKDROP = {
   // Mount Orford over the lake, for the Townships; Lake Champlain at Burlington, for the border.
   est: [commons('2/21/Pano_orford.jpg'), '58% 50%'],
   usa: [commons('7/77/Silent_sunset_over_lake_Champlain.jpg'), '62% 50%'],
+  // The shopfront on the first show's cover.
+  bigcuppa: [MC(768, '8/7/8/2/44f3-712f-4f97-9db9-b25389100b3c')],
 }
-// { src, at } for a game, or nothing: Scarface and the fan stations keep the plain night.
+// { src, at } for a game, or nothing: Scarface keeps the plain night.
 export const BACKDROPS = Object.fromEntries(
   Object.entries(BACKDROP).map(([game, [src, at = '50% 50%']]) => [
     game,
@@ -737,14 +736,47 @@ const OWN_ART = [
   'gta6-the-vault-radio',
   'gta2-lo-fi-fm',
   'fo4-raider-radio',
-  'fans-peachead-radio',
-  'fans-ls-live-radio-after-dark',
-  'fans-ls-live-radio-voices-of-los-santos',
-  'fans-ls-live-radio-halloween',
-  'fans-unit51-fm',
 ]
 
-export const STATIONS = [...LIST, ...REAL].map((st) => ({
+// Big Cuppa Radio (mixcloud.com/bigcupparadio): each show is a station, newest first. It plays in
+// Mixcloud's own player (see mixcloud.js), from the show's key there; its picture is the show's
+// own, a photograph that fills the place of a logo, with a small copy for where it is shown small
+// (Mixcloud only has them as heavy PNGs); `length` is its length in seconds, known before the
+// player says so.
+const cuppa = (name, when, genre, color, slug, picture, length) => ({
+  ...s('bigcuppa', name, when, genre, color),
+  mixcloud: `/bigcupparadio/${slug}/`,
+  picture: MC(640, picture),
+  thumb: MC(240, picture),
+  length,
+})
+const BIG_CUPPA = [
+  cuppa('Show #22', 'Novembre 2026', 'Funk / Kwaito / Boogie', '#bf8a41', 'show-22-big-cuppa-radio-nov-2026', '2/d/d/6/18fd-6e9e-4228-967b-69fda4540ebf', 3583),
+  cuppa('Show #21', 'Octobre 2026', 'Funk / Musiques du monde / Rock du désert', '#bf3c29', 'show-21-big-cuppa-radio-oct-2026', '1/a/8/f/ecc1-77dd-4534-ac93-21cfc62e5bfe', 4522),
+  cuppa('Show #20', 'Septembre 2026', 'Funk / Italo-disco / Musiques du monde', '#bf724a', 'show-20-big-cuppa-radio-sep-2026', '4/4/4/2/4b89-2935-45a2-ab67-f6812c74c37b', 4229),
+  cuppa('Show #19', 'Juillet 2026', 'Highlife / Funk / Musiques du monde', '#bf1c37', 'show-19-big-cuppa-radio-july-2026', '8/9/c/b/4ae8-8e4b-466a-bf6f-7e84ce9e5d1d', 3234),
+  cuppa('Show #18', 'Juin 2026', 'Boogie / Musiques du monde / Funk', '#bf7b54', 'show-18-big-cuppa-radio-july-2026', 'a/7/8/c/ed9c-2077-42a4-a240-ce471a64c627', 2896),
+  cuppa('World Cuppa Radio #1', 'Juin 2026 · extrait', 'Pop indé / Musiques du monde', '#bf1c2a', 'world-cuppa-radio-1-full-2-hour-show-on-patreon', '5/0/3/9/5149-dcfe-4e22-8863-9496753c26f4', 1991),
+  cuppa('Show #17', 'Mai 2026', 'Soul / Leftfield pop', '#bf7852', 'show-17-big-cuppa-radio-may-2026', 'b/6/7/f/735b-3c9b-46be-a874-a3848db7d924', 3756),
+  cuppa('Show #16', 'Avril 2026', 'Leftfield pop / Kwaito', '#bf6f43', 'show-16-big-cuppa-radio-april-2026', 'f/3/a/4/e19c-807a-43f7-9fe3-e5fb6c0122ad', 4056),
+  cuppa('Show #15', 'Mars 2026', 'Funk / Soul', '#1d81bf', 'show-15-big-cuppa-radio-march-2026', '3/3/4/b/140f-6c45-4fb8-b8e1-51bcef89c211', 3952),
+  cuppa('Show #14', 'Février 2026', 'Highlife / Pop bubblegum', '#bf7950', 'show-14-big-cuppa-radio-feb-2026', 'a/f/3/1/fca1-b66b-4f27-801a-99b3147a67ed', 4477),
+  cuppa('Show #13', 'Janvier 2026', 'Boogie / Funk', '#bf1c28', 'show-13-big-cuppa-radio-jan-2026', '1/a/2/7/8d2d-7c4c-4cf3-bd73-1be55b587596', 3668),
+  cuppa('Show #12', 'Décembre 2025', 'Soul / Disco', '#bf7956', 'show-12-big-cuppa-radio-december-2025', '1/f/1/4/3fe9-25d2-4ff6-b233-b44d72d08545', 4659),
+  cuppa('Show #11', 'Novembre 2025', 'Soul / Leftfield pop', '#bf734d', 'show-11-big-cuppa-radio-nov-2025', 'f/9/9/b/2ffd-cf65-49d9-97cb-461d862ab743', 4305),
+  cuppa('Show #10', 'Octobre 2025 · avec Peggy', 'Afro-boogie / Leftfield pop', '#bf7856', 'show-10-big-cuppa-radio-october-2025', '1/8/9/6/6bd7-3d88-42c8-b2fe-86ee14a03ff5', 4195),
+  cuppa('Show #9', 'Septembre 2025 · avec Sean Burke', 'Zouk / Dub reggae', '#bf7d56', 'show-9-big-cuppa-radio-september-2025-ft-sean-burke', 'a/d/a/b/0691-03e3-4581-9726-913d72591c27', 4217),
+  cuppa('Show #8', 'Août 2025', 'Highlife / Funk', '#bf642f', 'show-8-big-cuppa-radio-august-2025', '3/c/b/4/b861-aa25-49b8-b17b-1827027f9dfa', 3927),
+  cuppa('Show #7', 'Juin 2025', 'Highlife / Funk', '#bf7e56', 'show-7-big-cuppa-radio-june-2025', '9/8/7/e/80a5-2f94-4374-992d-4d625a51e238', 4095),
+  cuppa('Show #6', 'Mai 2025', 'Boogie / Leftfield pop', '#bf7c56', 'show-6-big-cuppa-radio-may-2025', '6/d/d/f/46d0-73e3-4502-a1f7-bdfdbe6aed78', 3437),
+  cuppa('Show #5', 'Avril 2025 · avec Cory P', 'Funk / Pop arabe', '#bf7e56', 'show-5-big-cuppa-radio-april-2025-ft-cory-p', '1/e/c/4/4056-a247-498c-b5fb-7a5a325ece42', 3905),
+  cuppa('Show #4', 'Mars 2025', 'Dub / Funk / Leftfield pop', '#bf6b39', 'show-4-big-cuppa-radio-march-2025-', 'f/e/d/e/f166-3abd-42c2-8c17-edd34e5856e7', 3862),
+  cuppa('Show #3', 'Février 2025 · spéciale États-Unis', 'Funk / Rock indé', '#bf7d56', 'show-3-big-cuppa-radio-feb-2025', '6/9/d/4/bea8-732d-4f08-ae53-63525de6d33d', 3468),
+  cuppa('Show #2', 'Janvier 2025', 'Électro / Jazz / Folk indé', '#bf6956', 'show-2-big-cuppa-radio', '7/4/8/f/20da-cddd-4c22-9396-97c7e03f1a84', 4198),
+  cuppa('Show #1', 'Décembre 2024', 'Électro / Funk / Synth-funk', '#bf7e56', 'show-1-big-cuppa-radio', '8/7/8/2/44f3-712f-4f97-9db9-b25389100b3c', 3635),
+]
+
+export const STATIONS = [...LIST, ...BIG_CUPPA, ...REAL].map((st) => ({
   ...st,
   era: GAMES.find((g) => g.id === st.game).era,
   logo: st.logo || (LOGOS[st.id] ? (LOGOS[st.id].startsWith('http') ? LOGOS[st.id] : wiki(LOGOS[st.id])) : ''),
