@@ -12,6 +12,7 @@ import { initials, sign, useFaces } from './sign.js'
 import { newerBuild, reloadFor } from './update.js'
 import ConfirmButton from './Confirm.jsx'
 import { startSync, useSync } from './sync.js'
+import { useStream } from './stream.js'
 
 const CURRENT_KEY = 'radio:current'
 const MODE_KEY = 'radio:mode'
@@ -513,6 +514,8 @@ const STATIONS_PLAYABLE = STATIONS.map((st) => {
 const RECORDINGS = STATIONS_PLAYABLE.filter((st) => st.videoId)
 // Where a real station is on the air, as its play key says it.
 const outside = (st) => (st.on === 'TuneIn' ? 'TuneIn' : 'son site')
+// What the app can play itself: a recording, or a real station's stream. The rest opens elsewhere.
+const playable = (st) => Boolean(st.videoId || st.stream)
 // The games that have something to play, in the order of the home screen.
 const GAME_IDS = GAMES.map((g) => g.id).filter((id) => STATIONS_PLAYABLE.some((st) => st.game === id))
 const eraLabel = (id) => ERAS.find((e) => e.id === id)?.name
@@ -671,7 +674,7 @@ function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, 
         <button className="drive-btn" onClick={() => onStep(-1)} aria-label="Station précédente">
           <Icon d={PREV} size={48} />
         </button>
-        {station?.link ? (
+        {station && !playable(station) ? (
           <a className="drive-btn drive-btn--main" href={station.link} target="_blank" rel="noopener" onClick={onOutside} aria-label={`Écouter ${station.name} sur ${outside(station)}`}>
             <Icon d={OUTSIDE} size={48} />
           </a>
@@ -987,6 +990,8 @@ export default function App() {
   // While the wheel is held open: where the hold started and whether the pointer has moved since.
   const holding = useRef(null)
   const yt = useYouTubePlayer(hostRef, live)
+  // A real station's live stream; it follows the same volume.
+  const air = useStream(yt.volume)
 
   const stations = STATIONS_PLAYABLE
   const current = stations.find((st) => st.id === currentId)
@@ -996,7 +1001,12 @@ export default function App() {
   // What the wheel can show: favourites and recents when there are any, then every game.
   const wheelPages = [...(favStations.length ? ['favs'] : []), ...(recentStations.length ? ['recent'] : []), ...GAME_IDS]
   const wheelStations = (page) => (page === 'favs' ? favStations : page === 'recent' ? recentStations : stations.filter((st) => st.game === page))
-  const isPlaying = yt.status === 'playing' || yt.status === 'buffering'
+  // What makes the sound for the station that is loaded: a real station's own stream, or
+  // YouTube's player for a recording. They answer to the same few words.
+  const onAir = Boolean(stations.find((st) => st.id === loadedId)?.stream)
+  const status = onAir ? air.status : yt.status
+  const toggleSound = onAir ? air.toggle : yt.toggle
+  const isPlaying = status === 'playing' || status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
   const modeInfo = MODES.find((m) => m.id === mode) ?? MODES[0]
   // The line of the list of songs that is playing, and its title.
@@ -1034,20 +1044,27 @@ export default function App() {
 
   // The static stops once the new station is playing (or has failed).
   useEffect(() => {
-    if (yt.status !== 'buffering') {
+    if (status !== 'buffering') {
       stopStatic.current?.()
       stopStatic.current = null
     }
-  }, [yt.status])
+  }, [status])
 
   function tune(st) {
-    if (controls) holdSession(true)
+    // (A stream plays in the page itself: the phone's controls are the app's without help.)
+    if (controls && !st.stream) holdSession(true)
     stopStatic.current?.()
     stopStatic.current = startStatic(yt.volume)
     setCurrentId(st.id)
     setLoadedId(st.id)
     setRecent((list) => [st.id, ...list.filter((id) => id !== st.id)].slice(0, 12))
-    yt.load(st.videoId)
+    if (st.stream) {
+      yt.pause()
+      air.play(st.stream)
+    } else {
+      air.stop()
+      yt.load(st.videoId)
+    }
   }
 
   function toggleFav(st) {
@@ -1055,28 +1072,29 @@ export default function App() {
   }
 
   function playStation(st) {
-    if (st.link) return bringUp(st)
+    if (!playable(st)) return bringUp(st)
     if (st.id !== loadedId) return tune(st)
-    if (st.id === currentId) return yt.toggle()
-    // Back on the station that was left for a real one: it carries on.
+    if (st.id === currentId) return toggleSound()
+    // Back on the station that was left for one that opens elsewhere: it carries on.
     setCurrentId(st.id)
-    if (!isPlaying) yt.toggle()
+    if (!isPlaying) toggleSound()
   }
-  // A real station isn't played here: it comes up on the screen, whatever was playing goes quiet,
-  // and its play key opens it where it is on the air.
+  // A real station without a stream isn't played here: it comes up on the screen, whatever was
+  // playing goes quiet, and its play key opens it where it is on the air.
   function bringUp(st) {
     yt.pause()
+    air.stop()
     setCurrentId(st.id)
   }
   const remember = (st) => setRecent((list) => [st.id, ...list.filter((id) => id !== st.id)].slice(0, 12))
 
   function togglePlay() {
     if (!current) return stations[0] && playStation(stations[0])
-    if (current.link) {
+    if (!playable(current)) {
       // From the keyboard; the key on the screen is a link of its own.
       remember(current)
       window.open(current.link, '_blank', 'noopener')
-    } else if (isCurrentLoaded) yt.toggle()
+    } else if (isCurrentLoaded) toggleSound()
     else tune(current)
   }
 
@@ -1118,9 +1136,9 @@ export default function App() {
   function setPlaying(want) {
     if (!current) return want && stations[0] && playStation(stations[0])
     // A key of the phone can't open another app.
-    if (current.link) return
+    if (!playable(current)) return
     if (!isCurrentLoaded) return want && tune(current)
-    if (want !== isPlaying) yt.toggle()
+    if (want !== isPlaying) toggleSound()
   }
 
   // Previous / next, as the phone, the car or a headset send them. A setting says what they do:
@@ -1128,7 +1146,7 @@ export default function App() {
   // to the following song, previous to the start of this one, or to the one before when it has
   // just begun); or skip 30 seconds. A broadcast can't be moved: live, they change station.
   function skip(dir) {
-    if (keys === 'station' || !isCurrentLoaded || live) return step(dir)
+    if (keys === 'station' || !isCurrentLoaded || live || !current.videoId) return step(dir)
     const list = keys === 'song' && current.tracks
     const songs = list ? list.map((_, i) => i).filter((i) => current.songs[i]) : []
     // No list to go by: 30 seconds, rather than leaving the station.
@@ -1142,10 +1160,10 @@ export default function App() {
 
   // Rewind / fast-forward, and the notification's own seek bar. A broadcast can't be moved.
   function seekTo(t) {
-    if (!isCurrentLoaded || live || !(yt.time.duration > 0) || !(t >= 0)) return
+    if (!isCurrentLoaded || !current.videoId || live || !(yt.time.duration > 0) || !(t >= 0)) return
     yt.seek(Math.min(t, yt.time.duration - 1))
   }
-  const nudge = (by) => isCurrentLoaded && !live && yt.hop(by)
+  const nudge = (by) => isCurrentLoaded && current.videoId && !live && yt.hop(by)
 
   function cycleMode() {
     const i = MODES.findIndex((m) => m.id === mode)
@@ -1154,7 +1172,7 @@ export default function App() {
 
   function changeLive(on) {
     setLive(on)
-    if (on && isCurrentLoaded) yt.goLive()
+    if (on && isCurrentLoaded && current.videoId) yt.goLive()
   }
 
   // Like in the games, the wheel opens on the current game's stations, whatever the mode.
@@ -1349,11 +1367,11 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
-  const failed = isCurrentLoaded && yt.status === 'error'
+  const failed = isCurrentLoaded && status === 'error'
   const { status: scrobbleStatus, last: lastScrobble } = useScrobbler({
-    videoId: isCurrentLoaded ? current.videoId : null,
+    videoId: (isCurrentLoaded && current.videoId) || null,
     tracks: current?.tracks,
-    playing: yt.status === 'playing',
+    playing: !onAir && yt.status === 'playing',
     time: yt.time,
   })
 
@@ -1436,27 +1454,28 @@ export default function App() {
   const sounding = isCurrentLoaded && isPlaying
   useEffect(() => {
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = !isCurrentLoaded ? 'none' : sounding ? 'playing' : 'paused'
-    holdSession(controls && sounding)
-  }, [controls, isCurrentLoaded, sounding])
+    holdSession(controls && sounding && !onAir)
+  }, [controls, isCurrentLoaded, sounding, onAir])
 
   // Where the recording is, for the notification's progress bar.
   useEffect(() => {
     if (!navigator.mediaSession?.setPositionState) return
     try {
-      if (isCurrentLoaded && yt.time.duration > 0) {
+      if (isCurrentLoaded && !onAir && yt.time.duration > 0) {
         navigator.mediaSession.setPositionState({ duration: yt.time.duration, position: Math.min(yt.time.current, yt.time.duration), playbackRate: 1 })
       } else navigator.mediaSession.setPositionState()
     } catch {
       // A position the browser won't take; the bar just stays where it was.
     }
-  }, [isCurrentLoaded, yt.time])
+  }, [isCurrentLoaded, onAir, yt.time])
 
-  // No rewinding a broadcast: in live mode the phone doesn't offer it.
+  // No rewinding a broadcast: in live mode, and on a real station, the phone doesn't offer it.
   useEffect(() => {
-    mediaKey('seekbackward', live ? null : (e) => actions.current.nudge(-(e.seekOffset || 30)))
-    mediaKey('seekforward', live ? null : (e) => actions.current.nudge(e.seekOffset || 30))
-    mediaKey('seekto', live ? null : (e) => actions.current.seekTo(e.seekTime))
-  }, [live])
+    const fixed = live || onAir
+    mediaKey('seekbackward', fixed ? null : (e) => actions.current.nudge(-(e.seekOffset || 30)))
+    mediaKey('seekforward', fixed ? null : (e) => actions.current.nudge(e.seekOffset || 30))
+    mediaKey('seekto', fixed ? null : (e) => actions.current.seekTo(e.seekTime))
+  }, [live, onAir])
 
   // On the home screen: sideways changes station (the row of stations scrolls by itself; anywhere
   // else, a swipe does it), up shows the details, a held finger opens the wheel.
@@ -1472,7 +1491,7 @@ export default function App() {
   })
 
   const playIcon = isCurrentLoaded && isPlaying ? PAUSE : PLAY
-  const tuning = isCurrentLoaded && yt.status === 'buffering'
+  const tuning = isCurrentLoaded && status === 'buffering'
   const pct = isCurrentLoaded && yt.time.duration ? (yt.time.current / yt.time.duration) * 100 : 0
   const modeButton = (
     <button className="ctrl ctrl--mode" title={`Changer de poste : ${modeInfo.label}`} onClick={cycleMode}>
@@ -1485,8 +1504,8 @@ export default function App() {
       <button className="ctrl" title="Station précédente" aria-label="Station précédente" onClick={() => step(-1)}>
         <Icon d={PREV} />
       </button>
-      {current?.link ? (
-        // A real station plays elsewhere: its key is the way there.
+      {current && !playable(current) ? (
+        // A real station without a stream plays elsewhere: its key is the way there.
         <a
           className="ctrl ctrl--main"
           href={current.link}
@@ -1536,7 +1555,7 @@ export default function App() {
       {/* The home screen is the radio itself: the station's sign in the night, what's on in a corner,
           one key, and the band of games along the bottom. Most of it is left empty on purpose. */}
       <main
-        className={`sheet ${isCurrentLoaded && yt.status === 'playing' ? 'is-playing' : ''} ${tuning ? 'is-tuning' : ''}`}
+        className={`sheet ${isCurrentLoaded && status === 'playing' ? 'is-playing' : ''} ${tuning ? 'is-tuning' : ''}`}
         style={{ '--accent': current?.color ?? '#2b2f34' }}
         inert={anyLayer}
         {...sheetSwipe}
@@ -1548,7 +1567,8 @@ export default function App() {
               {current ? gameLabel(current.game) : 'Choisis un jeu'}
               <Icon d={CHEVRON} size={18} />
             </button>
-            {live && <span className="lamp">En direct</span>}
+            {/* A real station is always live; a recording is when the setting says so. */}
+            {(current?.stream || (live && !current?.link)) && <span className="lamp">En direct</span>}
           </h1>
           <span className="sheet-top-actions">
             <button className="ctrl" onClick={() => setSearching(true)} aria-label="Tous les postes" title="Tous les postes (/)">
@@ -1621,8 +1641,12 @@ export default function App() {
           </div>
         </div>
         {current?.link ? (
-          // No recording, so no dial: where the station is on the air instead.
-          <p className="sheet-dial sheet-outside legend">En ondes sur {current.on === 'TuneIn' ? 'TuneIn' : 'le site du poste'}</p>
+          // No recording, so no dial: where else the station is on the air, which is the way to
+          // it when it has no stream, or when its stream won't come.
+          <a className="sheet-dial sheet-outside legend" href={current.link} target="_blank" rel="noopener" onClick={() => remember(current)}>
+            {current.stream ? 'Aussi sur ' : 'En ondes sur '}
+            {current.on === 'TuneIn' ? 'TuneIn' : 'le site du poste'}
+          </a>
         ) : (
           <button className="sheet-dial" onClick={() => setDetails(true)} disabled={!current} aria-label="Cadran, liste des chansons et vidéo">
             <span className="player-dial" style={{ '--pct': `${pct}%` }}>

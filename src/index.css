@@ -1024,6 +1024,10 @@ input[type='range']:disabled {
   align-items: center;
   justify-content: center;
   color: var(--legend-3);
+  text-decoration: none;
+}
+.sheet-outside:hover {
+  color: var(--legend);
 }
 .sheet-dial .player-dial {
   left: 0;

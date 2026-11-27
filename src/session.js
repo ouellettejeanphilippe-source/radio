@@ -66,8 +66,7 @@ const mix = (hex, share, into) => {
 // Resolves to a blob URL, or to null.
 const tiles = new Map()
 export function tile(station) {
-  // Nor does a real station, which doesn't play here.
-  if (station.link || (!station.logo && station.art)) return Promise.resolve(null)
+  if (!station.logo && station.art) return Promise.resolve(null)
   if (!tiles.has(station.id)) {
     const drawn = station.logo ? withLogo(station).catch(() => withName(station)) : withName(station)
     tiles.set(
@@ -90,10 +89,15 @@ function blank(station) {
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = SIZE
   const c = canvas.getContext('2d')
-  const light = c.createRadialGradient(SIZE / 2, SIZE * 0.35, 0, SIZE / 2, SIZE * 0.35, SIZE * 0.8)
-  light.addColorStop(0, mix(station.color, 0.52, '#15171a'))
-  light.addColorStop(1, '#060708')
-  c.fillStyle = light
+  if (station.paper) {
+    // A logo drawn for a white page gets its page here too (the plate, in the app).
+    c.fillStyle = '#e4e1da'
+  } else {
+    const light = c.createRadialGradient(SIZE / 2, SIZE * 0.35, 0, SIZE / 2, SIZE * 0.35, SIZE * 0.8)
+    light.addColorStop(0, mix(station.color, 0.52, '#15171a'))
+    light.addColorStop(1, '#060708')
+    c.fillStyle = light
+  }
   c.fillRect(0, 0, SIZE, SIZE)
   return { canvas, c }
 }
@@ -111,6 +115,8 @@ function withLogo(station) {
       const w = img.naturalWidth || SIZE
       const h = img.naturalHeight || SIZE
       const scale = Math.min((SIZE * 0.74) / w, (SIZE * 0.74) / h)
+      // On the plate, a logo's own white ground melts into it.
+      if (station.paper) c.globalCompositeOperation = 'multiply'
       c.drawImage(img, (SIZE - w * scale) / 2, (SIZE - h * scale) / 2, w * scale, h * scale)
       png(canvas).then(resolve, reject)
     }
