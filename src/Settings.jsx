@@ -343,8 +343,14 @@ const KEY_MODES = [
   { id: 'song', label: 'Chanson' },
   { id: 'hop', label: '30 secondes' },
 ]
+// When the screen stays on while a station plays (see App.jsx).
+const AWAKE_MODES = [
+  { id: 'plugged', label: 'Branché' },
+  { id: 'always', label: 'Toujours' },
+  { id: 'never', label: 'Jamais' },
+]
 
-export default function Settings({ count, total, live, onLive, controls, onControls, recording, keys, onKeys, updateReady, lastStatus, onClose }) {
+export default function Settings({ count, total, live, onLive, controls, onControls, recording, keys, onKeys, awake, onAwake, updateReady, lastStatus, onClose }) {
   const settings = useScrobbleSettings()
   return (
     <div className="wheel-backdrop" onClick={onClose}>
@@ -395,6 +401,26 @@ export default function Settings({ count, total, live, onLive, controls, onContr
                 `Elles passent d'une chanson à l'autre sur les postes dont on a la liste (${count} sur ${total}), et sautent 30 secondes sur les autres.`}
               {keys === 'hop' && 'Elles reculent ou avancent de 30 secondes.'}
               {keys !== 'station' && ' Ce qui est sauté vers l\'avant compte comme écouté. En direct, elles changent de poste.'}
+            </p>
+          </div>
+          <div className="choice-row">
+            <b id="awake-legend">Écran allumé pendant la lecture</b>
+            <span className="scrobble-help">Pour l'auto, où l'écran sert de tableau de bord : il n'y a pas d'écran à part, celui-ci se lit de loin.</span>
+            <div className="modes" role="group" aria-labelledby="awake-legend">
+              {AWAKE_MODES.map((a) => (
+                <button key={a.id} className="mode-key" aria-pressed={awake === a.id} onClick={() => onAwake(a.id)}>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            <p className="scrobble-help" role="status">
+              {awake === 'plugged' &&
+                ('getBattery' in navigator
+                  ? 'Il reste allumé quand le téléphone est branché, comme sur le support de l\'auto, et s\'éteint tout seul le reste du temps.'
+                  : 'Ce navigateur ne dit pas si le téléphone est branché : choisis « Toujours » pour l\'auto.')}
+              {awake === 'always' && 'Il reste allumé tant qu\'un poste joue et que l\'app est à l\'écran.'}
+              {awake === 'never' && 'Il s\'éteint tout seul, comme d\'habitude.'}
+              {awake !== 'never' && !('wakeLock' in navigator) && ' (Ce navigateur ne sait pas garder l\'écran allumé.)'}
             </p>
           </div>
         </section>

@@ -18,7 +18,9 @@ const CURRENT_KEY = 'radio:current'
 const MODE_KEY = 'radio:mode'
 const FAVS_KEY = 'radio:favs'
 const RECENT_KEY = 'radio:recent'
-const DRIVE_KEY = 'radio:drive'
+// Whether the screen stays on while a station plays: 'plugged' (while the phone charges, as in a
+// car), 'always' or 'never'.
+const AWAKE_KEY = 'radio:awake'
 const LIVE_KEY = 'radio:live'
 const KNOWS_WHEEL_KEY = 'radio:knows-wheel'
 // On this device: whether the app takes the phone's media controls, and whether their previous /
@@ -27,8 +29,9 @@ const CONTROLS_KEY = 'radio:controls'
 // What the previous and next keys do: 'station', 'song' or 'hop'.
 const KEYS_KEY = 'radio:keys'
 const HOP = 30
-// The app icon's "Mode auto" shortcut opens with ?auto (see the manifest).
-const LAUNCH_IN_CAR = new URLSearchParams(window.location.search).has('auto')
+// The installed app once had a shortcut to a car screen, which opened with ?auto. There is no car
+// screen any more: the shortcut, where a phone still has it, opens the app like any other way in.
+const OLD_SHORTCUT = new URLSearchParams(window.location.search).has('auto')
 
 function readJson(key, fallback) {
   try {
@@ -60,12 +63,10 @@ const OUTSIDE = 'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-
 const REPLAY = 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z'
 const VOL = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.47 4.47 0 0 0 2.5-4z'
 const MUTE = 'M3 9v6h4l5 5V4L7 9H3zm13.59 3L19 9.59 17.59 8.17 15.17 10.6 12.76 8.17 11.34 9.59 13.76 12l-2.42 2.41 1.42 1.42 2.41-2.42 2.42 2.42L19 14.41z'
-const RADIO = 'M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM7 20a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm13-8h-2v-2h-2v2H4V8h16v4z'
 const CHEVRON = 'M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z'
 const SHUFFLE = 'M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z'
 const GAMEPAD = 'M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'
 const CALENDAR = 'M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14v11zM7 11h5v5H7z'
-const CAR = 'M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM5 11l1.5-4.5h11L19 11H5z'
 const SEARCH = 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'
 const CLOSE = 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'
 const HEART = 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
@@ -540,7 +541,7 @@ function dropNextClick() {
   setTimeout(() => window.removeEventListener('click', drop, { capture: true }), 350)
 }
 // Controls that keep their own long press: holding one of them doesn't open the wheel.
-const NO_HOLD = '.ctrl, .drive-btn, .drive-close, .hold-hint, .now-text, .sheet-dial'
+const NO_HOLD = '.ctrl, .hold-hint, .now-text, .sheet-dial'
 
 // Tracks a touch and reports whether it became a horizontal or vertical drag. With `hold`, a finger
 // that stays put for a moment starts a hold instead: its moves and its release go to hold.move and
@@ -611,10 +612,10 @@ function useSwipe({ onMove, onEnd, hold }) {
   }
 }
 
-// Keeps the screen on while the component is mounted (re-acquired when the page comes back).
-function useWakeLock() {
+// Keeps the screen on while `on` holds (taken again when the page comes back).
+function useWakeLock(on) {
   useEffect(() => {
-    if (!('wakeLock' in navigator)) return
+    if (!on || !('wakeLock' in navigator)) return
     let lock
     let done = false
     const request = () => {
@@ -631,72 +632,26 @@ function useWakeLock() {
       document.removeEventListener('visibilitychange', request)
       lock?.release()
     }
-  }, [])
+  }, [on])
 }
 
-// Car screen: giant logo and buttons, swipe anywhere to change station, tap the logo (or hold
-// anywhere) for the wheel.
-function DriveMode({ station, song, failed, covered, playIcon, modeButton, fav, hold, onFav, onToggle, onOutside, onStep, onWheel, onClose }) {
-  const [dragX, setDragX] = useState(0)
-  useWakeLock()
-  const swipe = useSwipe({
-    onMove: (s) => setDragX(s.axis === 'x' ? s.dx : 0),
-    onEnd: (s) => {
-      setDragX(0)
-      if (s.axis === 'x' && Math.abs(s.dx) > 60) onStep(s.dx < 0 ? 1 : -1)
-    },
-    hold,
-  })
-  return (
-    <div className="drive" style={{ '--accent': station?.color ?? '#535353' }} inert={covered} {...swipe}>
-      <div className="drive-top">
-        <button className="drive-close" onClick={onClose}>
-          <Icon d={CLOSE} size={26} />
-          <span>Quitter</span>
-        </button>
-        {modeButton}
-        <button className={`ctrl drive-fav ${fav ? 'on' : ''}`} onClick={onFav} disabled={!station} aria-label="Favori">
-          <Icon d={fav ? HEART : HEART_OUTLINE} size={30} />
-        </button>
-      </div>
-      <button
-        className={`drive-art ${dragX ? 'dragging' : ''}`}
-        onClick={onWheel}
-        disabled={!station}
-        aria-label="Roue des radios"
-        style={{ transform: dragX ? `translateX(${dragX}px)` : undefined, opacity: dragX ? Math.max(0.3, 1 - Math.abs(dragX) / 300) : undefined }}
-      >
-        {station ? <Cover key={station.id} station={station} big /> : <Icon d={RADIO} size={96} />}
-      </button>
-      <div className="drive-info">
-        <div className="drive-name">{station?.name ?? 'Choisis une station'}</div>
-        {failed ? (
-          <div className="drive-song is-error" role="alert">
-            {FAILED}
-          </div>
-        ) : (
-          <div className="drive-song">{song || (station && [station.dj, gameLabel(station.game)].filter(Boolean).join(' · '))}</div>
-        )}
-      </div>
-      <div className="drive-controls">
-        <button className="drive-btn" onClick={() => onStep(-1)} aria-label="Station précédente">
-          <Icon d={PREV} size={48} />
-        </button>
-        {station && !playable(station) ? (
-          <a className="drive-btn drive-btn--main" href={station.link} target="_blank" rel="noopener" onClick={onOutside} aria-label={`Écouter ${station.name} sur ${outside(station)}`}>
-            <Icon d={OUTSIDE} size={48} />
-          </a>
-        ) : (
-          <button className="drive-btn drive-btn--main" onClick={onToggle} aria-label="Lecture / pause">
-            <Icon d={playIcon} size={56} />
-          </button>
-        )}
-        <button className="drive-btn" onClick={() => onStep(1)} aria-label="Station suivante">
-          <Icon d={NEXT} size={48} />
-        </button>
-      </div>
-    </div>
-  )
+// Whether the device is charging, where the browser says: on a car's mount, it usually is.
+function usePlugged() {
+  const [plugged, setPlugged] = useState(false)
+  useEffect(() => {
+    let battery
+    const read = () => setPlugged(Boolean(battery?.charging))
+    navigator.getBattery?.().then(
+      (b) => {
+        battery = b
+        read()
+        b.addEventListener('chargingchange', read)
+      },
+      () => {},
+    )
+    return () => battery?.removeEventListener('chargingchange', read)
+  }, [])
+  return plugged
 }
 
 const FAILED = 'Ne joue pas en ce moment'
@@ -984,7 +939,7 @@ export default function App() {
   const [lastVolume, setLastVolume] = useState(80)
   const [favs, setFavs] = useState(() => readJson(FAVS_KEY, []).map(renamed))
   const [recent, setRecent] = useState(() => readJson(RECENT_KEY, []).map(renamed))
-  const [drive, setDrive] = useState(() => LAUNCH_IN_CAR || readJson(DRIVE_KEY, false))
+  const [awake, setAwake] = useState(() => readJson(AWAKE_KEY, 'plugged'))
   const [controls, setControls] = useState(() => readJson(CONTROLS_KEY, sessionByDefault))
   // (An older version had a switch for songs only.)
   const [keys, setKeys] = useState(() => readJson(KEYS_KEY, null) ?? (readJson('radio:skip-songs', false) ? 'song' : 'station'))
@@ -1026,7 +981,6 @@ export default function App() {
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
   // A show from Mixcloud is on: its player is to be seen.
   const mixShown = Boolean(isCurrentLoaded && current.mixcloud)
-  const modeInfo = MODES.find((m) => m.id === mode) ?? MODES[0]
   // The line of the list of songs that is playing, and its title.
   const trackNow = isCurrentLoaded ? trackIndex(current.tracks, yt.time.current) : -1
   const song = trackNow >= 0 ? current.tracks[trackNow][1] : null
@@ -1051,17 +1005,17 @@ export default function App() {
     localStorage.setItem(RECENT_KEY, JSON.stringify(recent))
   }, [recent])
   useEffect(() => {
-    localStorage.setItem(DRIVE_KEY, JSON.stringify(drive))
-  }, [drive])
+    localStorage.setItem(AWAKE_KEY, JSON.stringify(awake))
+  }, [awake])
   useEffect(() => {
     localStorage.setItem(CONTROLS_KEY, JSON.stringify(controls))
   }, [controls])
   useEffect(() => {
     localStorage.setItem(KEYS_KEY, JSON.stringify(keys))
   }, [keys])
-  // The shortcut has done its job: a reload shouldn't force the car screen again.
+  // Come in by the old shortcut: its mark is taken off the address.
   useEffect(() => {
-    if (LAUNCH_IN_CAR) window.history.replaceState(window.history.state, '', window.location.pathname + window.location.hash)
+    if (OLD_SHORTCUT) window.history.replaceState(window.history.state, '', window.location.pathname + window.location.hash)
   }, [])
 
   // The static stops once the new station is playing (or has failed).
@@ -1187,10 +1141,6 @@ export default function App() {
   }
   const nudge = (by) => isCurrentLoaded && current.videoId && !live && yt.hop(by)
 
-  function cycleMode() {
-    const i = MODES.findIndex((m) => m.id === mode)
-    setMode(MODES[(i + 1) % MODES.length].id)
-  }
 
   function changeLive(on) {
     setLive(on)
@@ -1290,7 +1240,7 @@ export default function App() {
       // In the middle of something a reload would undo.
       step,
       busy: () => loadedId != null || settingsOpen || searching || picking || Boolean(wheel),
-      layered: () => settingsOpen || searching || picking || details || drive,
+      layered: () => settingsOpen || searching || picking || details,
     }
   })
 
@@ -1352,10 +1302,10 @@ export default function App() {
   const wheelLayer = Boolean(wheel) && !wheel.hold
   // The phone's back button (or a back swipe) closes the top layer instead of leaving the app:
   // while any layer is open, one extra history entry stands in for it.
-  const anyLayer = wheelLayer || settingsOpen || searching || picking || drive || details
+  const anyLayer = wheelLayer || settingsOpen || searching || picking || details
   const layers = useRef({})
   useEffect(() => {
-    layers.current = { wheel: wheelLayer, settingsOpen, searching, picking, drive, details }
+    layers.current = { wheel: wheelLayer, settingsOpen, searching, picking, details }
   })
   const justLoaded = useRef(true)
   useEffect(() => {
@@ -1379,7 +1329,6 @@ export default function App() {
         setScrobbleError(null)
       } else if (open.searching) setSearching(false)
       else if (open.picking) setPicking(false)
-      else if (open.drive) setDrive(false)
       else if (open.details) setDetails(false)
       else return
       // Another layer is still open underneath: it keeps an entry.
@@ -1477,6 +1426,10 @@ export default function App() {
   // Playing or paused, as the phone should show it; and the silent track that keeps the phone's
   // controls with the app rather than with YouTube's player (see session.js).
   const sounding = isCurrentLoaded && isPlaying
+  // There is no car screen: this one is made to be read from a mount too, and stays lit while a
+  // station plays, when the phone is charging (as it is in a car) or always, as the setting says.
+  const plugged = usePlugged()
+  useWakeLock(sounding && (awake === 'always' || (awake === 'plugged' && plugged)))
   useEffect(() => {
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = !isCurrentLoaded ? 'none' : sounding ? 'playing' : 'paused'
     holdSession(controls && sounding && !onAir)
@@ -1513,12 +1466,14 @@ export default function App() {
     mediaKey('seekto', fixed ? null : (e) => actions.current.seekTo(e.seekTime))
   }, [live, onAir])
 
-  // On the home screen: sideways changes station (the row of stations scrolls by itself; anywhere
-  // else, a swipe does it), up shows the details, a held finger opens the wheel.
+  // On the home screen, with a whole hand and without looking: sideways changes station (the row
+  // of stations scrolls by itself; anywhere else, a swipe does it), up shows the details, down
+  // the choice of games, and a held finger opens the wheel.
   const sheetSwipe = useSwipe({
     onEnd: (s) => {
       if (s.axis === 'x' && !s.strip && Math.abs(s.dx) > 70) step(s.dx < 0 ? 1 : -1)
       else if (s.axis === 'y' && s.dy < -70 && current && !current.link) setDetails(true)
+      else if (s.axis === 'y' && s.dy > 70) setPicking(true)
     },
     hold,
   })
@@ -1529,12 +1484,6 @@ export default function App() {
   const playIcon = isCurrentLoaded && isPlaying ? PAUSE : PLAY
   const tuning = isCurrentLoaded && status === 'buffering'
   const pct = isCurrentLoaded && yt.time.duration ? (yt.time.current / yt.time.duration) * 100 : 0
-  const modeButton = (
-    <button className="ctrl ctrl--mode" title={`Changer de poste : ${modeInfo.label}`} onClick={cycleMode}>
-      <Icon d={modeInfo.icon} />
-      <small>{modeInfo.label}</small>
-    </button>
-  )
   const transport = (
     <>
       <button className="ctrl" title="Station précédente" aria-label="Station précédente" onClick={() => step(-1)}>
@@ -1617,9 +1566,6 @@ export default function App() {
               title="Réglages&nbsp;: écoute en direct, commandes du téléphone, synchro, scrobbling"
             >
               <Icon d={GEAR} size={24} />
-            </button>
-            <button className="ctrl" onClick={() => setDrive(true)} aria-label="Mode auto" title="Mode auto">
-              <Icon d={CAR} size={24} />
             </button>
           </span>
         </header>
@@ -1757,24 +1703,6 @@ export default function App() {
         </div>
       )}
 
-      {drive && (
-        <DriveMode
-          station={current}
-          song={song ?? showName}
-          failed={failed}
-          covered={wheelLayer || settingsOpen}
-          playIcon={playIcon}
-          modeButton={modeButton}
-          fav={isFav}
-          hold={hold}
-          onFav={() => current && toggleFav(current)}
-          onToggle={togglePlay}
-          onOutside={() => current && remember(current)}
-          onStep={step}
-          onWheel={openWheel}
-          onClose={() => setDrive(false)}
-        />
-      )}
 
       {settingsOpen && (
         <Settings
@@ -1784,6 +1712,8 @@ export default function App() {
           onLive={changeLive}
           controls={controls}
           onControls={setControls}
+          awake={awake}
+          onAwake={setAwake}
           recording={sounding && !onAir}
           keys={keys}
           onKeys={setKeys}
