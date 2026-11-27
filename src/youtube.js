@@ -43,6 +43,9 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
   const listRef = useRef(null)
   const startRef = useRef(null)
   const nextRef = useRef(null)
+  // Those that have failed to come since the station was tuned into, and how many in a row.
+  const goneRef = useRef([])
+  const failsRef = useRef(0)
   // The recording that is loaded: the station's own, or the one of its several that is on.
   const [recording, setRecording] = useState(null)
   const liveRef = useRef(live)
@@ -94,6 +97,7 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
             }
             lastRef.current = null
           }
+          failsRef.current = 0
           setStatus('playing')
         } else if (e.data === S.PAUSED) {
           // The embed pauses itself when the page is hidden (phone switched to another app).
@@ -110,12 +114,22 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
         else if (e.data === S.ENDED) {
           lastRef.current = null
           // One of several: on to another. Alone: round again.
-          if (listRef.current) return nextRef.current(true)
+          if (listRef.current) return nextRef.current('ended')
           e.target.seekTo(0, true)
           e.target.playVideo()
         }
       },
-      onError: (e) => (!e || mine(e)) && setStatus('error'),
+      onError: (e) => {
+        if (e && !mine(e)) return
+        // One of several that won't come (an archive taken down, say): another is tried, a few
+        // times, before the station is called silent.
+        if (listRef.current && failsRef.current < Math.min(4, listRef.current.length - 1)) {
+          failsRef.current++
+          goneRef.current.push(videoIdRef.current)
+          return nextRef.current('failed')
+        }
+        setStatus('error')
+      },
     }
     eventsRef.current = events
     loadApi().then((YT) => {
@@ -212,17 +226,18 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
 
   // One of a station's several recordings. Live, the one the clock is in, where it is in it;
   // otherwise the one just left or one with something still to hear (see heard.js), and the usual
-  // rule says where in it. `ended`: the one that was on has just finished.
+  // rule says where in it. `after`: what became of the one that was on, 'ended' or 'failed'.
   const startOne = useCallback(
-    (ended) => {
+    (after) => {
       const list = listRef.current
       if (liveRef.current) {
         let spot = liveSpot(list)
-        // The clock still in the last seconds of the one that has just ended: on to the next.
-        if (ended && spot.id === videoIdRef.current && spot.at > spot.length / 2) spot = { ...following(list, spot.id), at: 0 }
+        // The clock still in the last seconds of the one that has just ended, or in the one
+        // that won't come: on to the next.
+        if (spot.id === videoIdRef.current && (after === 'failed' || (after === 'ended' && spot.at > spot.length / 2))) spot = { ...following(list, spot.id), at: 0 }
         return start(spot.id, spot.length, spot.at)
       }
-      const { id, reset } = pickRecording(list, readHeard(), ended ? videoIdRef.current : null)
+      const { id, reset } = pickRecording(list, readHeard(), [...goneRef.current, ...(after ? [videoIdRef.current] : [])])
       if (reset) setHeard(clearHeardOf(list))
       start(id, list.find((r) => r.id === id).length)
     },
@@ -236,7 +251,9 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
   const load = useCallback(
     (videoId, length, list) => {
       listRef.current = list ?? null
-      if (list) startOne(false)
+      failsRef.current = 0
+      goneRef.current = []
+      if (list) startOne()
       else start(videoId, length)
     },
     [start, startOne],

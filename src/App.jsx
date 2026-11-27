@@ -136,6 +136,7 @@ function Cover({ station, big, near = true, className = '' }) {
 
 // The picture behind the home screen: the game's city, or the real one. It comes in once it has
 // loaded, over the plain night, which is also what stays when there is none or it can't be had.
+// `game`: the game, or the one station that has a picture of its own.
 function Backdrop({ game }) {
   const picture = BACKDROPS[game]
   const [shown, setShown] = useState(null)
@@ -439,7 +440,7 @@ function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
 
 // What the recording holds besides music. Known per game where the rips are consistent,
 // otherwise what the uploader says (see scripts/meta.mjs).
-const GAME_TALK = { mafia2: 'full', mafia3: 'full', bigcuppa: 'dj', fo3: 'dj', fonv: 'dj', fo4: 'dj', sdogs: 'music', scarface: 'music', wd2: 'music', wdl: 'music', gtacw: 'music' }
+const GAME_TALK = { mafia2: 'full', mafia3: 'full', shows: 'dj', fo3: 'dj', fonv: 'dj', fo4: 'dj', sdogs: 'music', scarface: 'music', wd2: 'music', wdl: 'music', gtacw: 'music' }
 // GTA rips are whole broadcasts, except these: Chinatown Wars has no DJ (above), and for the first
 // games and GTA VI it depends on the upload, so the uploader's word is taken.
 const GTA_VARIES = ['gtacw', 'gta1', 'gtalondon', 'gta6']
@@ -516,6 +517,9 @@ const STATIONS_PLAYABLE = STATIONS.map((st) => {
 // The ones with a recording, as opposed to the real stations, which open elsewhere: what the
 // shuffle, the eras and the counts are about.
 const RECORDINGS = STATIONS_PLAYABLE.filter((st) => st.videoId)
+// Big Cuppa Radio was first a section of its own, with a station for each show: what a device
+// remembers of those is the one station it is now.
+const renamed = (id) => (typeof id === 'string' && id.startsWith('bigcuppa-') ? 'shows-big-cuppa-radio' : id)
 // Where a real station is on the air, as its play key says it.
 const outside = (st) => (st.on === 'TuneIn' ? 'TuneIn' : 'son site')
 // What the app can play itself: a recording, or a real station's stream. The rest opens elsewhere.
@@ -967,10 +971,8 @@ export default function App() {
     // Remembered from before, but no longer among the stations (the list changes): the last one
     // listened to that still is.
     const known = (id) => STATIONS_PLAYABLE.some((st) => st.id === id)
-    const id = readJson(CURRENT_KEY, null)
-    // (Big Cuppa Radio's shows were stations of their own for a day.)
-    if (typeof id === 'string' && id.startsWith('bigcuppa-')) return 'bigcuppa-big-cuppa-radio'
-    return id == null || known(id) ? id : (readJson(RECENT_KEY, []).find(known) ?? null)
+    const id = renamed(readJson(CURRENT_KEY, null))
+    return id == null || known(id) ? id : (readJson(RECENT_KEY, []).map(renamed).find(known) ?? null)
   })
   const [loadedId, setLoadedId] = useState(null)
   const [mode, setMode] = useState(() => readJson(MODE_KEY, 'game'))
@@ -980,8 +982,8 @@ export default function App() {
   // is holding it open.
   const [wheel, setWheel] = useState(null)
   const [lastVolume, setLastVolume] = useState(80)
-  const [favs, setFavs] = useState(() => readJson(FAVS_KEY, []))
-  const [recent, setRecent] = useState(() => readJson(RECENT_KEY, []))
+  const [favs, setFavs] = useState(() => readJson(FAVS_KEY, []).map(renamed))
+  const [recent, setRecent] = useState(() => readJson(RECENT_KEY, []).map(renamed))
   const [drive, setDrive] = useState(() => LAUNCH_IN_CAR || readJson(DRIVE_KEY, false))
   const [controls, setControls] = useState(() => readJson(CONTROLS_KEY, sessionByDefault))
   // (An older version had a switch for songs only.)
@@ -1028,10 +1030,10 @@ export default function App() {
   // The line of the list of songs that is playing, and its title.
   const trackNow = isCurrentLoaded ? trackIndex(current.tracks, yt.time.current) : -1
   const song = trackNow >= 0 ? current.tracks[trackNow][1] : null
-  // A station made of several recordings (Big Cuppa Radio's shows): the one that is on, which
+  // A station made of several recordings (a radio show's episodes): the one that is on, which
   // is said where a song would be.
   const show = isCurrentLoaded ? current.shows?.find((sh) => sh.id === yt.recording) : undefined
-  const showName = show && `${show.name} · ${show.when}`
+  const showName = show?.label
 
   useEffect(() => {
     localStorage.setItem(CURRENT_KEY, JSON.stringify(currentId))
@@ -1594,7 +1596,7 @@ export default function App() {
         inert={anyLayer}
         {...sheetSwipe}
       >
-        {current && <Backdrop game={current.game} />}
+        {current && <Backdrop game={BACKDROPS[current.id] ? current.id : current.game} />}
         <header className="sheet-top">
           <h1 className="sheet-game">
             <button className="game-name" onClick={() => setPicking(true)} title="Choisir un jeu">

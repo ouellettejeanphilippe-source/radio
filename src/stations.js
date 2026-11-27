@@ -2,6 +2,8 @@
 // except the real ones, which open elsewhere (`link`, see REAL below).
 // logo: optional image URL. Without one, the station's name is written out (see OWN_ART below).
 // era: when the game takes place (not when its music is from).
+import SHOWS from './shows.json' with { type: 'json' }
+
 export const ERAS = [
   { id: '40s', name: 'Années 40-50' },
   { id: '60s', name: 'Années 60' },
@@ -50,8 +52,8 @@ export const GAMES = [
   { id: 'fo4', name: 'Fallout 4', era: 'future', series: 'fo' },
   { id: 'fonv', name: 'Fallout: New Vegas', era: 'future', series: 'fo' },
   { id: 'fo3', name: 'Fallout 3', era: 'future', series: 'fo' },
-  // Not a game: a monthly show from a basement in East London (see BIG_CUPPA below).
-  { id: 'bigcuppa', name: 'Big Cuppa Radio', era: '2020s', where: 'Londres' },
+  // Not a game: real radio shows, each a station (see RADIO_SHOWS below).
+  { id: 'shows', name: 'Émissions de radio', era: '2020s', where: 'vrais DJ' },
   // Two real cities and their real radio (see REAL below).
   { id: 'mtl', name: 'Montréal', era: '2020s', series: 'real' },
   { id: 'shb', name: 'Sherbrooke', era: '2020s', series: 'real' },
@@ -600,10 +602,10 @@ const BACKDROP = {
   // Mount Orford over the lake, for the Townships; Lake Champlain at Burlington, for the border.
   est: [commons('2/21/Pano_orford.jpg'), '58% 50%'],
   usa: [commons('7/77/Silent_sunset_over_lake_Champlain.jpg'), '62% 50%'],
-  // The shopfront on the first show's cover.
-  bigcuppa: [MC(768, 'extaudio/8/7/8/2/44f3-712f-4f97-9db9-b25389100b3c')],
+  // For one station rather than a game: the shopfront on the cover of Big Cuppa Radio's first show.
+  'shows-big-cuppa-radio': [MC(768, 'extaudio/8/7/8/2/44f3-712f-4f97-9db9-b25389100b3c')],
 }
-// { src, at } for a game, or nothing: Scarface keeps the plain night.
+// { src, at } for a game (or for one station), or nothing: Scarface keeps the plain night.
 export const BACKDROPS = Object.fromEntries(
   Object.entries(BACKDROP).map(([game, [src, at = '50% 50%']]) => [
     game,
@@ -738,59 +740,46 @@ const OWN_ART = [
   'fo4-raider-radio',
 ]
 
-// Big Cuppa Radio (mixcloud.com/bigcupparadio): one station made of all its shows, like a game's
-// station made of its songs. Tuning in lands in one of them, somewhere not heard yet; when it
-// ends, another follows (see youtube.js and heard.js). They play in Mixcloud's own player (see
-// mixcloud.js), each by its key there. `length` is a show's length in seconds, known before the
-// player says so. The pictures are photographs that fill the place of a logo, with a small copy
-// for where they are shown small (Mixcloud only has them as heavy PNGs): the station's is the
-// channel's own, a show's is its cover.
-const show = (name, when, slug, picture, length) => ({
-  id: `/bigcupparadio/${slug}/`,
-  name,
-  when,
-  length,
-  picture: MC(640, `extaudio/${picture}`),
-  thumb: MC(240, `extaudio/${picture}`),
-})
-const BIG_CUPPA = [
-  {
-    ...s('bigcuppa', 'Big Cuppa Radio', 'Londres', 'Funk / Soul / Musiques du monde', '#bf7e56'),
-    mixcloud: '/bigcupparadio/',
-    picture: MC(640, 'profile/1/5/e/9/d921-5503-4506-a941-f7ebee60bcb8'),
-    thumb: MC(240, 'profile/1/5/e/9/d921-5503-4506-a941-f7ebee60bcb8'),
-    // In the order they were made, which is the order they go by when live.
-    shows: [
-    show('Show #1', 'Décembre 2024', 'show-1-big-cuppa-radio', '8/7/8/2/44f3-712f-4f97-9db9-b25389100b3c', 3635),
-    show('Show #2', 'Janvier 2025', 'show-2-big-cuppa-radio', '7/4/8/f/20da-cddd-4c22-9396-97c7e03f1a84', 4198),
-    show('Show #3', 'Février 2025 · spéciale États-Unis', 'show-3-big-cuppa-radio-feb-2025', '6/9/d/4/bea8-732d-4f08-ae53-63525de6d33d', 3468),
-    show('Show #4', 'Mars 2025', 'show-4-big-cuppa-radio-march-2025-', 'f/e/d/e/f166-3abd-42c2-8c17-edd34e5856e7', 3862),
-    show('Show #5', 'Avril 2025 · avec Cory P', 'show-5-big-cuppa-radio-april-2025-ft-cory-p', '1/e/c/4/4056-a247-498c-b5fb-7a5a325ece42', 3905),
-    show('Show #6', 'Mai 2025', 'show-6-big-cuppa-radio-may-2025', '6/d/d/f/46d0-73e3-4502-a1f7-bdfdbe6aed78', 3437),
-    show('Show #7', 'Juin 2025', 'show-7-big-cuppa-radio-june-2025', '9/8/7/e/80a5-2f94-4374-992d-4d625a51e238', 4095),
-    show('Show #8', 'Août 2025', 'show-8-big-cuppa-radio-august-2025', '3/c/b/4/b861-aa25-49b8-b17b-1827027f9dfa', 3927),
-    show('Show #9', 'Septembre 2025 · avec Sean Burke', 'show-9-big-cuppa-radio-september-2025-ft-sean-burke', 'a/d/a/b/0691-03e3-4581-9726-913d72591c27', 4217),
-    show('Show #10', 'Octobre 2025 · avec Peggy', 'show-10-big-cuppa-radio-october-2025', '1/8/9/6/6bd7-3d88-42c8-b2fe-86ee14a03ff5', 4195),
-    show('Show #11', 'Novembre 2025', 'show-11-big-cuppa-radio-nov-2025', 'f/9/9/b/2ffd-cf65-49d9-97cb-461d862ab743', 4305),
-    show('Show #12', 'Décembre 2025', 'show-12-big-cuppa-radio-december-2025', '1/f/1/4/3fe9-25d2-4ff6-b233-b44d72d08545', 4659),
-    show('Show #13', 'Janvier 2026', 'show-13-big-cuppa-radio-jan-2026', '1/a/2/7/8d2d-7c4c-4cf3-bd73-1be55b587596', 3668),
-    show('Show #14', 'Février 2026', 'show-14-big-cuppa-radio-feb-2026', 'a/f/3/1/fca1-b66b-4f27-801a-99b3147a67ed', 4477),
-    show('Show #15', 'Mars 2026', 'show-15-big-cuppa-radio-march-2026', '3/3/4/b/140f-6c45-4fb8-b8e1-51bcef89c211', 3952),
-    show('Show #16', 'Avril 2026', 'show-16-big-cuppa-radio-april-2026', 'f/3/a/4/e19c-807a-43f7-9fe3-e5fb6c0122ad', 4056),
-    show('Show #17', 'Mai 2026', 'show-17-big-cuppa-radio-may-2026', 'b/6/7/f/735b-3c9b-46be-a874-a3848db7d924', 3756),
-    show('World Cuppa Radio #1', 'Juin 2026 · extrait', 'world-cuppa-radio-1-full-2-hour-show-on-patreon', '5/0/3/9/5149-dcfe-4e22-8863-9496753c26f4', 1991),
-    show('Show #18', 'Juin 2026', 'show-18-big-cuppa-radio-july-2026', 'a/7/8/c/ed9c-2077-42a4-a240-ce471a64c627', 2896),
-    show('Show #19', 'Juillet 2026', 'show-19-big-cuppa-radio-july-2026', '8/9/c/b/4ae8-8e4b-466a-bf6f-7e84ce9e5d1d', 3234),
-    show('Show #20', 'Septembre 2026', 'show-20-big-cuppa-radio-sep-2026', '4/4/4/2/4b89-2935-45a2-ab67-f6812c74c37b', 4229),
-    show('Show #21', 'Octobre 2026', 'show-21-big-cuppa-radio-oct-2026', '1/a/8/f/ecc1-77dd-4534-ac93-21cfc62e5bfe', 4522),
-    show('Show #22', 'Novembre 2026', 'show-22-big-cuppa-radio-nov-2026', '2/d/d/6/18fd-6e9e-4228-967b-69fda4540ebf', 3583),
-    ],
-  },
+// --- Radio shows ------------------------------------------------------------------------------
+// Real radio shows in the spirit of the games' stations: a DJ with a voice of their own, often a
+// funny or an odd one, and records chosen by hand. Each show is one station made of its
+// episodes, as a game's station is made of its songs: tuning in lands in one of them, somewhere
+// not heard yet, and when it ends another follows (see youtube.js and heard.js). They play in
+// Mixcloud's own player (see mixcloud.js), each episode by its key there. Most are archives kept
+// by listeners; the list of episodes is src/shows.json, written by scripts/shows.mjs.
+// `cover`: the station's picture, a photograph that fills the place of a logo: 'profile' for the
+// account's own, a number for that episode's, nothing for the name written out.
+const radioShow = (name, host, genre, color, era, feed, cover) => {
+  const { profile, episodes } = SHOWS[feed]
+  const picture = cover === 'profile' ? profile : episodes[cover]?.[3]
+  return {
+    ...s('shows', name, host, genre, color),
+    era,
+    // (Not a key at Mixcloud: what the station's listening is known by, as a video's id is.)
+    mixcloud: `/${feed}/`,
+    // Small copies for where a picture is shown small: Mixcloud only has them as heavy PNGs.
+    picture: picture ? MC(640, picture) : '',
+    thumb: picture ? MC(240, picture) : '',
+    // In the order they were put up, which is the order they go by when live. `length` is in
+    // seconds, known before the player says so.
+    shows: episodes.map(([id, length, label, own]) => ({ id, length, label, picture: MC(640, own), thumb: MC(240, own) })),
+  }
+}
+const RADIO_SHOWS = [
+  radioShow('Big Cuppa Radio', 'Londres', 'Funk / Soul / Musiques du monde', '#bf7e56', '2020s', 'big-cuppa-radio', 'profile'),
+  radioShow('Do!! You!!! Breakfast Show', 'Charlie Bones', 'Éclectique', '#2f6fd0', '2020s', 'do-you', 'profile'),
+  radioShow('God’s Jukebox', 'Mark Lamarr', 'R&B / Rockabilly / Soul / Reggae', '#b5651d', '2000s', 'mark-lamarr', 'profile'),
+  radioShow('Theme Time Radio Hour', 'Bob Dylan', 'Blues / Country / Rock’n’roll', '#8e44ad', '2000s', 'theme-time'),
+  radioShow('The Kenny Everett Show', 'Kenny Everett', 'Pop / Sketches', '#e67e22', '80s', 'kenny-everett', 0),
+  radioShow('Mark & Lard', 'Mark Radcliffe et Marc Riley', 'Pop / Indie', '#c0392b', '2000s', 'mark-and-lard', 0),
+  radioShow('London Calling', 'Joe Strummer', 'Musiques du monde / Reggae / Punk', '#d63384', '2000s', 'joe-strummer', 1),
+  radioShow('The Wolfman Jack Show', 'Wolfman Jack', 'Rock’n’roll / Soul', '#d4a017', '60s', 'wolfman-jack', 0),
 ]
 
-export const STATIONS = [...LIST, ...BIG_CUPPA, ...REAL].map((st) => ({
+export const STATIONS = [...LIST, ...RADIO_SHOWS, ...REAL].map((st) => ({
   ...st,
-  era: GAMES.find((g) => g.id === st.game).era,
+  // (A radio show has its own time; a game's station has the game's.)
+  era: st.era ?? GAMES.find((g) => g.id === st.game).era,
   logo: st.logo || (LOGOS[st.id] ? (LOGOS[st.id].startsWith('http') ? LOGOS[st.id] : wiki(LOGOS[st.id])) : ''),
   art: OWN_ART.includes(st.id),
 }))

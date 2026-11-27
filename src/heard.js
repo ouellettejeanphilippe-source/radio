@@ -118,16 +118,16 @@ export function pickStart(rec, d) {
 // Which one to tune into: the one left less than 2 minutes ago, to carry on in it; otherwise one
 // drawn at random, the likelier the more of it is still to hear (where in it is pickStart's
 // business). When next to nothing is left to hear in any of them, they all start over.
-// `ended`: the one that has just finished, which isn't carried on in, and isn't drawn again
-// while another has something to hear.
-export function pickRecording(list, all, ended) {
+// `avoid`: the one that has just finished and those that wouldn't come, which aren't carried on
+// in, and aren't drawn again while another has something to hear.
+export function pickRecording(list, all, avoid = []) {
   const left = list
     .map(({ id }) => ({ id, rec: all[id] }))
-    .filter(({ id, rec }) => id !== ended && rec?.p != null && Date.now() - (rec.t || 0) < RESUME_WITHIN && rec.p < rec.d - 5)
+    .filter(({ id, rec }) => !avoid.includes(id) && rec?.p != null && Date.now() - (rec.t || 0) < RESUME_WITHIN && rec.p < rec.d - 5)
     .sort((a, b) => b.rec.t - a.rec.t)[0]
   if (left) return { id: left.id, reset: false }
   const draw = (weights) => {
-    const others = weights.map((w, i) => (list[i].id === ended ? 0 : w))
+    const others = weights.map((w, i) => (avoid.includes(list[i].id) ? 0 : w))
     const among = others.some((w) => w > 0) ? others : weights
     let at = Math.random() * among.reduce((sum, w) => sum + w, 0)
     return list[Math.max(0, among.findIndex((w) => (at -= w) < 0))].id
