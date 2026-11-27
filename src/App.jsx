@@ -925,7 +925,7 @@ function GamePicker({ stations, currentId, favStations, recentStations, onGame, 
                     <button key={g.id} className="game-key" onClick={() => onGame(g.id)} aria-current={current?.game === g.id ? 'true' : undefined}>
                       <b>{g.name}</b>
                       <small>
-                        {g.count} {g.what ?? `poste${g.count > 1 ? 's' : ''}`} · {g.series === 'real' ? 'FM et AM' : (g.where ?? eraLabel(g.era))}
+                        {g.count} poste{g.count > 1 ? 's' : ''} · {g.series === 'real' ? 'FM et AM' : (g.where ?? eraLabel(g.era))}
                       </small>
                     </button>
                   ))}
@@ -968,6 +968,8 @@ export default function App() {
     // listened to that still is.
     const known = (id) => STATIONS_PLAYABLE.some((st) => st.id === id)
     const id = readJson(CURRENT_KEY, null)
+    // (Big Cuppa Radio's shows were stations of their own for a day.)
+    if (typeof id === 'string' && id.startsWith('bigcuppa-')) return 'bigcuppa-big-cuppa-radio'
     return id == null || known(id) ? id : (readJson(RECENT_KEY, []).find(known) ?? null)
   })
   const [loadedId, setLoadedId] = useState(null)
@@ -1026,6 +1028,10 @@ export default function App() {
   // The line of the list of songs that is playing, and its title.
   const trackNow = isCurrentLoaded ? trackIndex(current.tracks, yt.time.current) : -1
   const song = trackNow >= 0 ? current.tracks[trackNow][1] : null
+  // A station made of several recordings (Big Cuppa Radio's shows): the one that is on, which
+  // is said where a song would be.
+  const show = isCurrentLoaded ? current.shows?.find((sh) => sh.id === yt.recording) : undefined
+  const showName = show && `${show.name} · ${show.when}`
 
   useEffect(() => {
     localStorage.setItem(CURRENT_KEY, JSON.stringify(currentId))
@@ -1077,7 +1083,7 @@ export default function App() {
       air.play(st.stream)
     } else {
       air.stop()
-      yt.load(st.videoId, st.length)
+      yt.load(st.videoId, st.length, st.shows)
     }
   }
 
@@ -1450,8 +1456,8 @@ export default function App() {
   useEffect(() => {
     if (!current) return
     showOutside(`${current.name} · Radio`, {
-      title: song || current.name,
-      artist: song ? current.name : current.dj || gameLabel(current.game),
+      title: song || showName || current.name,
+      artist: song || showName ? current.name : current.dj || gameLabel(current.game),
       album: gameLabel(current.game),
       // The tile drawn for the station, once it is; a recording with a picture of its own shows
       // that. Never nothing: the phone would put the page's small icon there, blown up.
@@ -1459,12 +1465,12 @@ export default function App() {
         art?.id === current.id
           ? [{ src: art.url, sizes: '512x512', type: 'image/png' }]
           : current.picture
-            ? [{ src: current.picture, sizes: '640x640', type: 'image/png' }, APP_ICON]
+            ? [{ src: show?.picture ?? current.picture, sizes: '640x640' }, APP_ICON]
             : current.art
               ? [{ src: thumbs(current, true)[0], sizes: '1280x720', type: 'image/jpeg' }, APP_ICON]
               : [APP_ICON],
     })
-  }, [current, song, art])
+  }, [current, song, art, showName, show?.picture])
 
   // Playing or paused, as the phone should show it; and the silent track that keeps the phone's
   // controls with the app rather than with YouTube's player (see session.js).
@@ -1639,7 +1645,7 @@ export default function App() {
               ) : (
                 <span className="now-song">
                   {!current && 'Touche « Choisis un jeu », en haut.'}
-                  {current && (song || [current.dj, current.genre].filter(Boolean).join(' · '))}
+                  {current && (song || showName || [current.dj, current.genre].filter(Boolean).join(' · '))}
                   {song && scrobbleStatus?.state === 'done' && <span className="song-scrobble song-scrobble--done"> ✓ envoyée</span>}
                   {song && scrobbleStatus?.state === 'error' && (
                     <span className="song-scrobble song-scrobble--error" title={scrobbleStatus.error}>
@@ -1703,8 +1709,12 @@ export default function App() {
               <span className="sheet-top-actions" />
             </div>
             {/* The real YouTube iframe is positioned over this slot (see .audio-host--video). */}
-            <div className="video-slot">{(!isCurrentLoaded || current.mixcloud) && <Cover key={current.id} station={current} big />}</div>
+            {/* (For one of several recordings, the picture of the one that is on.) */}
+            <div className="video-slot">
+              {(!isCurrentLoaded || current.mixcloud) && <Cover key={show?.id ?? current.id} station={show ? { ...current, picture: show.picture } : current} big />}
+            </div>
             <div className="chips">
+              {showName && <span className="badge">{showName}</span>}
               {current.dj && <span className="badge">{current.dj}</span>}
               <span className="badge">{current.genre}</span>
               <span className="badge">{eraLabel(current.era)}</span>
@@ -1716,13 +1726,13 @@ export default function App() {
               <p className="tracks-none">Pas de liste de chansons pour ce poste.</p>
             )}
             <Dial
-              rec={yt.heard[current.videoId]}
+              rec={yt.heard[show?.id ?? current.videoId]}
               time={yt.time}
               enabled={isCurrentLoaded}
               live={live}
               onSeek={yt.seek}
               onHop={nudge}
-              onReset={() => yt.resetHeard(current.videoId)}
+              onReset={() => yt.resetHeard(show?.id ?? current.videoId)}
             />
             <div className="legend" id="modes-legend">
               Glisser change de poste
@@ -1748,7 +1758,7 @@ export default function App() {
       {drive && (
         <DriveMode
           station={current}
-          song={song}
+          song={song ?? showName}
           failed={failed}
           covered={wheelLayer || settingsOpen}
           playIcon={playIcon}

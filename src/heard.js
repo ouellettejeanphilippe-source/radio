@@ -112,12 +112,47 @@ export function pickStart(rec, d) {
   return { start: (best.start + offset) % d, reset: false }
 }
 
-// Where to start a show, which unlike a station's loop has a beginning: from the top the first
-// time, then where it was left. Once it has been left at its end: at the first stretch that wasn't
-// heard, and from the top again when there is none.
-export function pickShowStart(rec, d) {
-  if (rec?.p != null && rec.p < d - 30) return { start: rec.p, reset: false }
-  const iv = merge((rec?.iv ?? []).map(([a, b]) => [Math.max(0, a), Math.min(d, b)]).filter(([a, b]) => b > a), d)
-  if (!iv.length || iv[0][0] > 0) return { start: 0, reset: false }
-  return iv[0][1] < d ? { start: iv[0][1], reset: false } : { start: 0, reset: true }
+// --- A station made of several recordings (Big Cuppa Radio's shows), each with its own history.
+// `list` is [{ id, length }], in the order they were made.
+
+// Which one to tune into: the one left less than 2 minutes ago, to carry on in it; otherwise one
+// drawn at random, the likelier the more of it is still to hear (where in it is pickStart's
+// business). When next to nothing is left to hear in any of them, they all start over.
+// `ended`: the one that has just finished, which isn't carried on in, and isn't drawn again
+// while another has something to hear.
+export function pickRecording(list, all, ended) {
+  const left = list
+    .map(({ id }) => ({ id, rec: all[id] }))
+    .filter(({ id, rec }) => id !== ended && rec?.p != null && Date.now() - (rec.t || 0) < RESUME_WITHIN && rec.p < rec.d - 5)
+    .sort((a, b) => b.rec.t - a.rec.t)[0]
+  if (left) return { id: left.id, reset: false }
+  const draw = (weights) => {
+    const others = weights.map((w, i) => (list[i].id === ended ? 0 : w))
+    const among = others.some((w) => w > 0) ? others : weights
+    let at = Math.random() * among.reduce((sum, w) => sum + w, 0)
+    return list[Math.max(0, among.findIndex((w) => (at -= w) < 0))].id
+  }
+  const unheard = list.map(({ id, length }) => (all[id]?.d || length) * (1 - heardRatio(all[id])))
+  if (unheard.every((seconds) => seconds < MIN_GAP)) return { id: draw(list.map((r) => r.length)), reset: true }
+  return { id: draw(unheard.map((seconds) => (seconds < MIN_GAP ? 0 : seconds))), reset: false }
+}
+
+// Live: the recordings follow one another around the clock, and this is where it is now.
+export function liveSpot(list) {
+  let at = (Date.now() / 1000) % list.reduce((sum, r) => sum + r.length, 0)
+  for (const r of list) {
+    if (at < r.length) return { id: r.id, length: r.length, at }
+    at -= r.length
+  }
+  return { id: list[0].id, length: list[0].length, at: 0 }
+}
+
+// The one after `id`, for when the clock and the recording's real length don't quite agree.
+export const following = (list, id) => list[(list.findIndex((r) => r.id === id) + 1) % list.length]
+
+export function clearHeardOf(list) {
+  const all = readHeard()
+  for (const { id } of list) if (all[id]) all[id] = { d: all[id].d, iv: [], t: Date.now(), r: Date.now() }
+  writeHeard(all)
+  return all
 }
