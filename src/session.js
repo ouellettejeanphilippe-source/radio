@@ -98,7 +98,7 @@ const mix = (hex, share, into) => {
 // nothing that can have gone away meanwhile.
 const tiles = new Map()
 export function tile(station) {
-  if (!station.logo && station.art) return Promise.resolve(null)
+  if (!station.logo && (station.art || station.picture)) return Promise.resolve(null)
   if (!tiles.has(station.id)) {
     const drawn = station.logo ? withLogo(station).catch(() => withName(station)) : withName(station)
     tiles.set(

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { addHeard, clearHeard, liveStart, pickStart, readHeard } from './heard.js'
+import { addHeard, clearHeard, liveStart, pickShowStart, pickStart, readHeard } from './heard.js'
+import { MixPlayer } from './mixcloud.js'
 
 let apiPromise
 function loadApi() {
@@ -23,8 +24,20 @@ export function parseYouTubeId(value) {
   return /^[\w-]{11}$/.test(v) ? v : null
 }
 
-export function useYouTubePlayer(hostRef, live) {
+// The players behind every recording: YouTube's for nearly all of them, and Mixcloud's for the
+// shows that live there, made on the first one asked for. A recording's id says which: a show's
+// is its key at Mixcloud, which starts with a slash. Mixcloud's player takes the same orders and
+// gives the same reports as YouTube's (see mixcloud.js), so one set of rules runs both.
+const onMixcloud = (id) => id.startsWith('/')
+// The player of the recording that is loaded, once it takes orders.
+const pick = (mixRef, playerRef, readyRef, videoIdRef) =>
+  videoIdRef.current && onMixcloud(videoIdRef.current) ? mixRef.current : readyRef.current ? playerRef.current : null
+
+export function useYouTubePlayer(hostRef, live, mixHostRef) {
   const playerRef = useRef(null)
+  const mixRef = useRef(null)
+  // What a player reports, for the one made later.
+  const eventsRef = useRef(null)
   const liveRef = useRef(live)
   useEffect(() => {
     liveRef.current = live
@@ -48,6 +61,51 @@ export function useYouTubePlayer(hostRef, live) {
   useEffect(() => {
     let cancelled = false
     const host = hostRef.current
+    // YouTube's numbers for what a player is doing, which Mixcloud's speaks too.
+    const S = { ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3 }
+    // The player that isn't the loaded recording's has just been told to stop: its word on that
+    // is not this recording's.
+    const mine = (e) => e.target === (videoIdRef.current && onMixcloud(videoIdRef.current) ? mixRef.current : playerRef.current)
+    const events = {
+      onStateChange: (e) => {
+        if (!mine(e)) return
+        if (e.data === S.PLAYING) {
+          if (needsStartRef.current) {
+            needsStartRef.current = false
+            const d = e.target.getDuration()
+            if (d > 120 && liveRef.current) e.target.seekTo(liveStart(d), true)
+            else if (d > 120) {
+              // A station is tuned into somewhere not heard yet; a show is taken from the top,
+              // then where it was left (see heard.js).
+              const id = videoIdRef.current
+              const { start, reset } = (onMixcloud(id) ? pickShowStart : pickStart)(readHeard()[id], d)
+              if (reset) setHeard(clearHeard(id))
+              if (start > 0 || !onMixcloud(id)) e.target.seekTo(start, true)
+            }
+            lastRef.current = null
+          }
+          setStatus('playing')
+        } else if (e.data === S.PAUSED) {
+          // The embed pauses itself when the page is hidden (phone switched to another app).
+          // A pause right after hiding that the user didn't ask for gets undone; later pauses
+          // (e.g. from lock-screen controls) are respected.
+          const hidden = document.visibilityState === 'hidden'
+          const justHidden = hidden && (hiddenAtRef.current < visibleAtRef.current || Date.now() - hiddenAtRef.current < 3000)
+          if (justHidden && !userPausedRef.current) {
+            e.target.playVideo()
+            return
+          }
+          setStatus('paused')
+        } else if (e.data === S.BUFFERING) setStatus('buffering')
+        else if (e.data === S.ENDED) {
+          lastRef.current = null
+          e.target.seekTo(0, true)
+          e.target.playVideo()
+        }
+      },
+      onError: (e) => (!e || mine(e)) && setStatus('error'),
+    }
+    eventsRef.current = events
     loadApi().then((YT) => {
       if (cancelled) return
       const el = document.createElement('div')
@@ -65,42 +123,7 @@ export function useYouTubePlayer(hostRef, live) {
             if (pendingRef.current) e.target.loadVideoById(pendingRef.current)
             pendingRef.current = null
           },
-          onStateChange: (e) => {
-            const S = YT.PlayerState
-            if (e.data === S.PLAYING) {
-              if (needsStartRef.current) {
-                needsStartRef.current = false
-                const d = e.target.getDuration()
-                if (d > 120 && liveRef.current) e.target.seekTo(liveStart(d), true)
-                else if (d > 120) {
-                  const id = videoIdRef.current
-                  const { start, reset } = pickStart(readHeard()[id], d)
-                  if (reset) setHeard(clearHeard(id))
-                  e.target.seekTo(start, true)
-                }
-                lastRef.current = null
-              }
-              setStatus('playing')
-            } else if (e.data === S.PAUSED) {
-              // The embed pauses itself when the page is hidden (phone switched to another app).
-              // A pause right after hiding that the user didn't ask for gets undone; later pauses
-              // (e.g. from lock-screen controls) are respected.
-              const hidden = document.visibilityState === 'hidden'
-              const justHidden = hidden && (hiddenAtRef.current < visibleAtRef.current || Date.now() - hiddenAtRef.current < 3000)
-              if (justHidden && !userPausedRef.current) {
-                e.target.playVideo()
-                return
-              }
-              setStatus('paused')
-            }
-            else if (e.data === S.BUFFERING) setStatus('buffering')
-            else if (e.data === S.ENDED) {
-              lastRef.current = null
-              e.target.seekTo(0, true)
-              e.target.playVideo()
-            }
-          },
-          onError: () => setStatus('error'),
+          ...events,
         },
       })
     })
@@ -116,6 +139,8 @@ export function useYouTubePlayer(hostRef, live) {
       playerRef.current = null
       readyRef.current = false
       host.replaceChildren()
+      mixRef.current?.destroy()
+      mixRef.current = null
     }
   }, [hostRef])
 
@@ -125,7 +150,7 @@ export function useYouTubePlayer(hostRef, live) {
       return
     }
     const t = setInterval(() => {
-      const p = playerRef.current
+      const p = pick(mixRef, playerRef, readyRef, videoIdRef)
       if (!p?.getCurrentTime || needsStartRef.current) return
       const current = p.getCurrentTime()
       const duration = p.getDuration()
@@ -139,21 +164,41 @@ export function useYouTubePlayer(hostRef, live) {
     return () => clearInterval(t)
   }, [status])
 
-  const load = useCallback((videoId) => {
-    videoIdRef.current = videoId
-    needsStartRef.current = true
-    lastRef.current = null
-    userPausedRef.current = false
-    setStatus('buffering')
-    setTime({ current: 0, duration: 0 })
-    if (readyRef.current) playerRef.current.loadVideoById(videoId)
-    else pendingRef.current = videoId
-  }, [])
+  // `length`: the recording's length in seconds where it is known beforehand (a show's is).
+  const load = useCallback(
+    (videoId, length) => {
+      // From one player to the other: the one being left goes quiet.
+      const was = videoIdRef.current
+      if (was && onMixcloud(was) !== onMixcloud(videoId)) {
+        if (onMixcloud(was)) mixRef.current?.pauseVideo()
+        else if (readyRef.current) playerRef.current.pauseVideo()
+        else pendingRef.current = null
+      }
+      videoIdRef.current = videoId
+      needsStartRef.current = true
+      lastRef.current = null
+      userPausedRef.current = false
+      setStatus('buffering')
+      setTime({ current: 0, duration: 0 })
+      if (onMixcloud(videoId)) {
+        if (mixRef.current) mixRef.current.loadVideoById(videoId, length)
+        else {
+          mixRef.current = new MixPlayer(mixHostRef.current, videoId, length, {
+            volume: volumeRef.current,
+            report: (e) => eventsRef.current.onStateChange(e),
+            fail: () => eventsRef.current.onError({ target: mixRef.current }),
+          })
+        }
+      } else if (readyRef.current) playerRef.current.loadVideoById(videoId)
+      else pendingRef.current = videoId
+    },
+    [mixHostRef],
+  )
 
   // Live: jump to where the broadcast is now.
   const goLive = useCallback(() => {
-    const p = playerRef.current
-    if (!readyRef.current || needsStartRef.current) return
+    const p = pick(mixRef, playerRef, readyRef, videoIdRef)
+    if (!p || needsStartRef.current) return
     const d = p.getDuration()
     if (!(d > 120)) return
     lastRef.current = null
@@ -161,12 +206,12 @@ export function useYouTubePlayer(hostRef, live) {
   }, [])
 
   const toggle = useCallback(() => {
-    const p = playerRef.current
-    if (!readyRef.current) return
+    const p = pick(mixRef, playerRef, readyRef, videoIdRef)
+    if (!p) return
     // Still tuning in counts as playing, as on the key: pressed then, it stops the station.
-    const S = window.YT.PlayerState
+    // (1 and 3: playing and buffering, in YouTube's numbers.)
     const state = p.getPlayerState()
-    const playing = state === S.PLAYING || state === S.BUFFERING
+    const playing = state === 1 || state === 3
     userPausedRef.current = playing
     if (playing) p.pauseVideo()
     else {
@@ -178,15 +223,17 @@ export function useYouTubePlayer(hostRef, live) {
 
   // Quiet, whatever it was doing: playing, or still tuning in.
   const pause = useCallback(() => {
-    if (!readyRef.current) return
+    const p = pick(mixRef, playerRef, readyRef, videoIdRef)
+    if (!p) return
     userPausedRef.current = true
-    playerRef.current.pauseVideo()
+    p.pauseVideo()
   }, [])
 
   const seek = useCallback((t) => {
-    if (!readyRef.current) return
+    const p = pick(mixRef, playerRef, readyRef, videoIdRef)
+    if (!p) return
     lastRef.current = null
-    playerRef.current.seekTo(t, true)
+    p.seekTo(t, true)
     setTime((x) => ({ ...x, current: t }))
   }, [])
 
@@ -195,15 +242,20 @@ export function useYouTubePlayer(hostRef, live) {
   // song played twice or one that isn't wanted gets passed, and it shouldn't come back later as
   // a stretch still to hear.
   const skipTo = useCallback((t, by) => {
-    const p = playerRef.current
-    if (!readyRef.current || needsStartRef.current) return
+    const p = pick(mixRef, playerRef, readyRef, videoIdRef)
+    if (!p || needsStartRef.current) return
     const d = p.getDuration()
     if (!(d > 0)) return
+    const id = videoIdRef.current
     const from = p.getCurrentTime()
     const to = Math.max(0, Math.min(by == null ? t : from + by, d - 1))
-    if (to > from) setHeard(addHeard(videoIdRef.current, from, to, d))
+    const passed = () => to > from && setHeard(addHeard(id, from, to, d))
     lastRef.current = null
-    p.seekTo(to, true)
+    // Mixcloud says whether the show moved (it doesn't let every show be moved in); YouTube's
+    // player always moves.
+    const moved = p.seekTo(to, true)
+    if (moved?.then) moved.then((ok) => ok && passed())
+    else passed()
     setTime((x) => ({ ...x, current: to }))
   }, [])
   const hop = useCallback((by) => skipTo(null, by), [skipTo])
@@ -226,6 +278,7 @@ export function useYouTubePlayer(hostRef, live) {
       p.setVolume(v)
       if (v > 0) p.unMute()
     }
+    mixRef.current?.setVolume(v)
   }, [])
 
   return { status, time, volume, heard, resetHeard, load, toggle, pause, seek, skipTo, hop, goLive, setVolume }

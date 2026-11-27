@@ -88,8 +88,11 @@ const thumbs = (st, big) => [...(big ? ['maxresdefault'] : []), 'mqdefault'].map
 // A station's picture: its logo; failing that, the recording's own picture where it has one
 // (`art`, see stations.js); failing that, its name, written out as a sign (see sign.js), or its
 // initials where the picture is small. `big` is for where it is shown large.
-function Cover({ station, big, className = '' }) {
-  const sources = [station.logo, station.logoAlt, ...(station.art ? thumbs(station, big) : [])].filter(Boolean)
+// `near`: in the row of stations, whether this is the one in the middle. A show's picture is
+// heavy at full size, and only that one is seen large.
+function Cover({ station, big, near = true, className = '' }) {
+  const picture = big && near ? station.picture : station.thumb
+  const sources = [station.logo, station.logoAlt, picture, ...(station.art ? thumbs(station, big) : [])].filter(Boolean)
   const [index, setIndex] = useState(0)
   // Tiny in-game textures (GTA 2's logos are 64 px wide) are shown as the pixel art they are.
   const [tiny, setTiny] = useState(false)
@@ -99,7 +102,7 @@ function Cover({ station, big, className = '' }) {
   if (src) {
     return (
       <div
-        className={`cover ${isLogo ? 'cover--logo' : 'cover--thumb'} ${isLogo && tiny ? 'cover--pixel' : ''} ${isLogo && station.paper ? 'cover--paper' : ''} ${className}`}
+        className={`cover ${isLogo ? 'cover--logo' : 'cover--thumb'} ${src === picture ? 'cover--square' : ''} ${isLogo && tiny ? 'cover--pixel' : ''} ${isLogo && station.paper ? 'cover--paper' : ''} ${className}`}
         style={{ '--c': station.color }}
       >
         {/* Fandom's image host refuses requests that carry a foreign Referer. */}
@@ -436,7 +439,7 @@ function RadioWheel({ ref, pages, currentId, hold, onPick, onGame, onClose }) {
 
 // What the recording holds besides music. Known per game where the rips are consistent,
 // otherwise what the uploader says (see scripts/meta.mjs).
-const GAME_TALK = { mafia2: 'full', mafia3: 'full', fans: 'full', fo3: 'dj', fonv: 'dj', fo4: 'dj', sdogs: 'music', scarface: 'music', wd2: 'music', wdl: 'music', gtacw: 'music' }
+const GAME_TALK = { mafia2: 'full', mafia3: 'full', bigcuppa: 'dj', fo3: 'dj', fonv: 'dj', fo4: 'dj', sdogs: 'music', scarface: 'music', wd2: 'music', wdl: 'music', gtacw: 'music' }
 // GTA rips are whole broadcasts, except these: Chinatown Wars has no DJ (above), and for the first
 // games and GTA VI it depends on the upload, so the uploader's word is taken.
 const GTA_VARIES = ['gtacw', 'gta1', 'gtalondon', 'gta6']
@@ -502,7 +505,8 @@ const gameLabel = (id) => GAMES.find((g) => g.id === id)?.name
 // Lower case and no accents, so "electro" finds "Électro".
 const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 const STATIONS_PLAYABLE = STATIONS.map((st) => {
-  const videoId = parseYouTubeId(st.youtube)
+  // What the recording is known by: YouTube's id for the video, or the show's key at Mixcloud.
+  const videoId = st.mixcloud || parseYouTubeId(st.youtube)
   const search = fold(`${st.name} ${st.dj} ${st.genre} ${gameLabel(st.game)}`)
   const tracks = META[videoId]?.tracks
   // Which lines are songs, as opposed to ads, DJ talk and news.
@@ -866,7 +870,7 @@ function Carousel({ list, currentId, held, onChoose, onOpen, onStep }) {
           aria-label={st.id === currentId ? `${st.name} : ouvrir la roue des radios` : st.name}
           aria-current={st.id === currentId ? 'true' : undefined}
         >
-          <Cover station={st} big />
+          <Cover station={st} big near={st.id === near} />
         </button>
       ))}
     </div>
@@ -921,7 +925,7 @@ function GamePicker({ stations, currentId, favStations, recentStations, onGame, 
                     <button key={g.id} className="game-key" onClick={() => onGame(g.id)} aria-current={current?.game === g.id ? 'true' : undefined}>
                       <b>{g.name}</b>
                       <small>
-                        {g.count} poste{g.count > 1 ? 's' : ''} · {g.series === 'real' ? 'FM et AM' : eraLabel(g.era)}
+                        {g.count} {g.what ?? `poste${g.count > 1 ? 's' : ''}`} · {g.series === 'real' ? 'FM et AM' : (g.where ?? eraLabel(g.era))}
                       </small>
                     </button>
                   ))}
@@ -959,7 +963,13 @@ export default function App() {
   const [picking, setPicking] = useState(false)
   // « Aléatoire » follows one shuffled order per visit, so that going back is going back.
   const [shuffled] = useState(() => shuffle(RECORDINGS))
-  const [currentId, setCurrentId] = useState(() => readJson(CURRENT_KEY, null))
+  const [currentId, setCurrentId] = useState(() => {
+    // Remembered from before, but no longer among the stations (the list changes): the last one
+    // listened to that still is.
+    const known = (id) => STATIONS_PLAYABLE.some((st) => st.id === id)
+    const id = readJson(CURRENT_KEY, null)
+    return id == null || known(id) ? id : (readJson(RECENT_KEY, []).find(known) ?? null)
+  })
   const [loadedId, setLoadedId] = useState(null)
   const [mode, setMode] = useState(() => readJson(MODE_KEY, 'game'))
   const [live, setLive] = useState(() => readJson(LIVE_KEY, false))
@@ -989,7 +999,9 @@ export default function App() {
   const wheelRef = useRef(null)
   // While the wheel is held open: where the hold started and whether the pointer has moved since.
   const holding = useRef(null)
-  const yt = useYouTubePlayer(hostRef, live)
+  // Mixcloud's player, for the shows that play there: shown, where YouTube's is tucked away.
+  const mixHostRef = useRef(null)
+  const yt = useYouTubePlayer(hostRef, live, mixHostRef)
   // A real station's live stream; it follows the same volume.
   const air = useStream(yt.volume)
 
@@ -1008,6 +1020,8 @@ export default function App() {
   const toggleSound = onAir ? air.toggle : yt.toggle
   const isPlaying = status === 'playing' || status === 'buffering'
   const isCurrentLoaded = Boolean(current && loadedId === current.id)
+  // A show from Mixcloud is on: its player is to be seen.
+  const mixShown = Boolean(isCurrentLoaded && current.mixcloud)
   const modeInfo = MODES.find((m) => m.id === mode) ?? MODES[0]
   // The line of the list of songs that is playing, and its title.
   const trackNow = isCurrentLoaded ? trackIndex(current.tracks, yt.time.current) : -1
@@ -1063,7 +1077,7 @@ export default function App() {
       air.play(st.stream)
     } else {
       air.stop()
-      yt.load(st.videoId)
+      yt.load(st.videoId, st.length)
     }
   }
 
@@ -1444,9 +1458,11 @@ export default function App() {
       artwork:
         art?.id === current.id
           ? [{ src: art.url, sizes: '512x512', type: 'image/png' }]
-          : current.art
-            ? [{ src: thumbs(current, true)[0], sizes: '1280x720', type: 'image/jpeg' }, APP_ICON]
-            : [APP_ICON],
+          : current.picture
+            ? [{ src: current.picture, sizes: '640x640', type: 'image/png' }, APP_ICON]
+            : current.art
+              ? [{ src: thumbs(current, true)[0], sizes: '1280x720', type: 'image/jpeg' }, APP_ICON]
+              : [APP_ICON],
     })
   }, [current, song, art])
 
@@ -1659,6 +1675,9 @@ export default function App() {
             {current.stream ? 'Aussi sur ' : 'En ondes sur '}
             {current.on === 'TuneIn' ? 'TuneIn' : 'le site du poste'}
           </a>
+        ) : mixShown ? (
+          // A show from Mixcloud: its player sits here, in the dial's place (see .mix-host).
+          <div className="sheet-dial sheet-mix" />
         ) : (
           <button className="sheet-dial" onClick={() => setDetails(true)} disabled={!current} aria-label="Cadran, liste des chansons et vidéo">
             <span className="player-dial" style={{ '--pct': `${pct}%` }}>
@@ -1667,6 +1686,10 @@ export default function App() {
           </button>
         )}
       </main>
+      {/* Mixcloud's player, which Mixcloud wants seen: along the bottom of the home screen while
+          one of its shows is on, and out of the way otherwise. Whatever opens over the home
+          screen covers it too. */}
+      <div ref={mixHostRef} className={`mix-host ${mixShown ? 'mix-host--shown' : ''}`} inert={!mixShown || anyLayer} />
 
       {/* Behind the dial: the video, the list of songs, the full dial and the swipe mode. */}
       {details && current && !current.link && (
@@ -1680,7 +1703,7 @@ export default function App() {
               <span className="sheet-top-actions" />
             </div>
             {/* The real YouTube iframe is positioned over this slot (see .audio-host--video). */}
-            <div className="video-slot">{!isCurrentLoaded && <Cover key={current.id} station={current} big />}</div>
+            <div className="video-slot">{(!isCurrentLoaded || current.mixcloud) && <Cover key={current.id} station={current} big />}</div>
             <div className="chips">
               {current.dj && <span className="badge">{current.dj}</span>}
               <span className="badge">{current.genre}</span>
