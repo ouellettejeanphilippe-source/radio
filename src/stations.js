@@ -54,6 +54,10 @@ export const GAMES = [
   // Two real cities and their real radio (see REAL below).
   { id: 'mtl', name: 'Montréal', era: '2020s', series: 'real' },
   { id: 'shb', name: 'Sherbrooke', era: '2020s', series: 'real' },
+  // The towns around Sherbrooke, Granby and Coaticook among them; and what crosses the border
+  // from Vermont, New York and New Hampshire.
+  { id: 'est', name: "Cantons-de-l'Est", era: '2020s', series: 'real' },
+  { id: 'usa', name: 'États-Unis', era: '2020s', series: 'real' },
 ]
 
 // Fandom image URL; these hosts only serve hotlinked images without a Referer (see Cover in App.jsx).
@@ -596,6 +600,9 @@ const BACKDROP = {
   fo3: ['fallout/images/2/2c/Capital_Wasteland_CA.jpg'],
   mtl: [commons('1/19/View_of_downtown_Montreal_-_panoramio.jpg')],
   shb: [commons('2/20/Sherbrooke%2C_Quebec_-_centre-ville_en_automne_-_1.jpg')],
+  // Mount Orford over the lake, for the Townships; Lake Champlain at Burlington, for the border.
+  est: [commons('2/21/Pano_orford.jpg'), '58% 50%'],
+  usa: [commons('7/77/Silent_sunset_over_lake_Champlain.jpg'), '62% 50%'],
 }
 // { src, at } for a game, or nothing: Scarface and the fan stations keep the plain night.
 export const BACKDROPS = Object.fromEntries(
@@ -624,18 +631,24 @@ export const BACKDROPS = Object.fromEntries(
 const LP = (path) => `https://static.wikia.nocookie.net/logopedia/images/${path}/revision/latest`
 const WM = (path) => `https://upload.wikimedia.org/wikipedia/${path}`
 const TI = (id) => `https://cdn-profiles.tunein.com/${id}/images/logog.png`
+// TuneIn keeps some logos as JPEG, and the older ones on another host.
+const TJ = (id) => `https://cdn-profiles.tunein.com/${id}/images/logog.jpg`
+const TR = (id) => `https://cdn-radiotime-logos.tunein.com/${id}g.png`
 const STW = (mount) => `https://playerservices.streamtheworld.com/api/livestream-redirect/${mount}.mp3`
 const STATS = (port) => `https://stream2.statsradio.com/${port}/stream`
-const real = (game, freq, name, genre, color, { tunein, listen = true, site, stream = '', logo = '', paper = false } = {}) => ({
+// town: said after the frequency, for a station that isn't in the city its section is named for.
+// logoAlt: a second address for the logo, tried when the first doesn't answer.
+const real = (game, freq, name, genre, color, { tunein, listen = true, site, stream = '', logo = '', logoAlt = '', paper = false, town = '' } = {}) => ({
   id: `${game}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
   game,
   name,
   // Where a game's station has its DJ, a real one has its place on the dial.
-  dj: `${freq.replace('.', ',')} ${freq.includes('.') ? 'FM' : 'AM'}`,
+  dj: `${freq.replace('.', ',')}\u00a0${freq.includes('.') ? 'FM' : 'AM'}${town && ` · ${town}`}`,
   genre,
   color,
   youtube: '',
   logo,
+  logoAlt,
   paper,
   stream,
   link: tunein && listen ? `https://tunein.com/radio/${tunein}/` : site,
@@ -649,10 +662,10 @@ const REAL = [
   real('mtl', '88.5', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { stream: STW('CBMEFM_CBC'), tunein: 's25436', ...CBC_ONE }),
   real('mtl', '89.3', 'CISM', 'Universitaire', '#c9a400', { tunein: 's24807', logo: TI('s24807'), paper: true }),
   real('mtl', '89.9', 'KIC Country', 'Country', '#2e7d32', { tunein: 's148941', logo: TI('s148941'), paper: true }),
-  real('mtl', '90.3', 'CKUT', 'Universitaire', '#e65100', { stream: 'https://ckut.out.airtime.pro/ckut_a', tunein: 's31297', logo: WM('fr/thumb/3/38/CKUT-FM.PNG/960px-CKUT-FM.PNG'), paper: true }),
-  // No logo of Radio VM's sharper than 170 px could be found: its name is written.
-  real('mtl', '91.3', 'Radio VM', 'Classique / Spirituel', '#1fa98a', { stream: 'https://s5.radio.co/sec326ff8a/listen', tunein: 's16572' }),
-  real('mtl', '91.9', 'BPM Sports', 'Sports', '#1f4fa3', { stream: STW('CKLXFM'), tunein: 's47769', logo: WM('commons/0/06/BPM_SPORTS_logo.svg') }),
+  real('mtl', '90.3', 'CKUT', 'Universitaire', '#e65100', { stream: 'https://ckut.out.airtime.pro/ckut_a', tunein: 's31297', logo: WM('fr/thumb/3/38/CKUT-FM.PNG/960px-CKUT-FM.PNG'), logoAlt: TR('s31297'), paper: true }),
+  // (No logo of Radio VM's sharper than 170 px could be found: on its plate, it stays small.)
+  real('mtl', '91.3', 'Radio VM', 'Classique / Spirituel', '#1fa98a', { stream: 'https://s5.radio.co/sec326ff8a/listen', tunein: 's16572', logo: TR('s16572'), paper: true }),
+  real('mtl', '91.9', 'BPM Sports', 'Sports', '#1f4fa3', { stream: STW('CKLXFM'), tunein: 's47769', logo: WM('commons/0/06/BPM_SPORTS_logo.svg'), logoAlt: TJ('s47769') }),
   real('mtl', '92.5', 'The Beat', 'Pop', '#c2188b', { stream: STW('CKBEFM'), site: 'https://www.thebeat925.ca/', logo: LP('f/f2/CKBE-2011.svg') }),
   real('mtl', '93.5', 'CBC Music', 'Éclectique', '#00838f', { stream: STW('CBLFM_CBC'), tunein: 's16700', ...CBC_MUSIC }),
   real('mtl', '94.3', 'Énergie', 'Rock / Pop', '#2a35c9', { stream: STW('CKMFFM'), site: 'https://www.radioenergie.ca/montreal/', logo: LP('8/8f/Logo-nrj-montreal-inverted.svg') }),
@@ -664,28 +677,56 @@ const REAL = [
   real('mtl', '99.5', '99,5', 'Talk', '#283593', { stream: 'https://stream-cjpx-rr01.leclerccom.com/cjpx.mp3', tunein: 's43899', logo: LP('3/34/CJPX_99.5_Montreal_logo_blanc.png') }),
   real('mtl', '100.1', 'CKVL', 'Communautaire', '#e65100', { stream: STATS(8072), tunein: 's97799', logo: TI('s97799'), paper: true }),
   real('mtl', '100.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { stream: STW('CBFXFM_SRC'), tunein: 's1917', ...ICI_MUSIQUE }),
-  real('mtl', '101.5', 'CIBL', 'Communautaire', '#e0a800', { stream: STATS(8106), tunein: 's24677', logo: WM('commons/thumb/d/d5/CIBL_101%2C5_logo.png/960px-CIBL_101%2C5_logo.png'), paper: true }),
-  real('mtl', '102.3', 'Radio Centre-Ville', 'Communautaire', '#8e24aa', { tunein: 's24681', logo: WM('commons/9/96/Radio_Centre-Ville_102%2C3_FM_logo.png'), paper: true }),
+  real('mtl', '101.5', 'CIBL', 'Communautaire', '#e0a800', { stream: STATS(8106), tunein: 's24677', logo: TJ('s24677') }),
+  real('mtl', '102.3', 'Radio Centre-Ville', 'Communautaire', '#8e24aa', { tunein: 's24681', logo: TR('s24681') }),
   real('mtl', '103.7', 'K103', 'Country', '#b71c1c', { stream: STATS(8092), tunein: 's64954', logo: TI('s64954') }),
-  real('mtl', '105.1', 'Mike FM', 'Multilingue', '#1a237e', { stream: STATS(8020), tunein: 's100845', logo: WM('en/0/0c/CKDG-FM.png'), paper: true }),
+  real('mtl', '105.1', 'Mike FM', 'Multilingue', '#1a237e', { stream: STATS(8020), tunein: 's100845', logo: TJ('s100845'), paper: true }),
   real('mtl', '105.7', 'Rythme FM', 'Pop', '#e5127d', { stream: STW('CFGLFM'), tunein: 's31119', listen: false, site: 'https://www.rythmefm.com/montreal', logo: LP('4/4d/CFGL-Rythme_FM_105%2C7_%282021%29.svg') }),
   real('mtl', '107.3', 'Rouge FM', 'Pop', '#e4002b', { stream: STW('CITEFM'), site: 'https://www.rougefm.ca/montreal/', logo: LP('0/0c/Logo-rougefm-montreal.svg') }),
   real('mtl', '690', 'TSN 690', 'Sports', '#e4002b', { stream: STW('CKGMAM'), tunein: 's12472', logo: LP('b/bc/CKGM_TSN_690.svg'), paper: true }),
   real('mtl', '800', 'CJAD 800', 'Nouvelles / Talk', '#d81b60', { stream: STW('CJADAM'), tunein: 's31204', logo: LP('c/c8/CJAD-AM800_%28Inverted%2C_2011%29.svg') }),
   real('mtl', '1410', 'CPAM', 'Multilingue', '#1565c0', { stream: 'https://centova.radioservers.biz/proxy/groupem2/stream', tunein: 's7761', logo: TI('s7761') }),
+  // Missing at first: the traffic station, one more community station, and Saint-Jérôme's, heard
+  // in the north of the city. Their names are written: no logo of theirs could be found.
+  real('mtl', '730', 'Radio Circulation', 'Circulation', '#f9a825', { stream: STW('CKACAM'), site: 'https://www.radiocirculation.net/' }),
+  real('mtl', '1610', 'Radio Humsafar', 'Multilingue', '#e65100', { stream: 'https://ice2.securenetsystems.net/HUMSAFAR', site: 'https://radiohumsafar.com/' }),
+  real('mtl', '103.9', 'CIME', 'Pop', '#1e88e5', { stream: STW('CIMEFM'), site: 'https://www.cime.fm/', town: 'Saint-Jérôme' }),
   real('mtl', '1690', 'CJLO', 'Universitaire', '#37474f', { stream: 'https://cjlo.radioca.st/stream', tunein: 's24823', logo: TI('s24823'), paper: true }),
   real('shb', '88.3', 'CFAK', 'Universitaire', '#2e7d32', { stream: 'https://streams.radiomast.io/a372c74f-6c78-48b9-9933-81a8fc50b54a', site: 'https://cfak.ca/', logo: WM('fr/7/7f/Logo-cfak-noir.jpg'), paper: true }),
-  // CJMQ has no logo to be found: its name is written.
-  real('shb', '88.9', 'CJMQ', 'Communautaire', '#00838f', { stream: 'https://centova.radioservers.biz/proxy/cjmqdavi/stream', tunein: 's24836' }),
+  real('shb', '88.9', 'CJMQ', 'Communautaire', '#1565c0', { stream: 'https://centova.radioservers.biz/proxy/cjmqdavi/stream', tunein: 's24836', logo: TR('s24836') }),
   real('shb', '89.7', 'CBC Music', 'Éclectique', '#00838f', { stream: STW('CBLFM_CBC'), tunein: 's12499', ...CBC_MUSIC }),
   real('shb', '90.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { stream: STW('CBFXFM2_SRC'), tunein: 's55444', ...ICI_MUSIQUE }),
   real('shb', '91.7', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { stream: STW('CBVEFM_CBC'), tunein: 's12501', ...CBC_ONE }),
   real('shb', '93.7', 'Rythme FM', 'Pop', '#e5127d', { stream: STW('CFGEFM'), site: 'https://www.rythmefm.com/estrie', logo: LP('c/c6/CFGE-FM_Rythme_93.7-98.1_%282021%29.svg') }),
-  real('shb', '95.5', 'CFLX', 'Communautaire', '#3aa7a3', { stream: STATS(8110), tunein: 's12503', listen: false, site: 'https://cflx.qc.ca/', logo: WM('fr/b/b7/Logo_de_la_station_CFLX-FM.png'), paper: true }),
+  real('shb', '95.5', 'CFLX', 'Communautaire', '#3aa7a3', { stream: STATS(8110), tunein: 's12503', listen: false, site: 'https://cflx.qc.ca/', logo: WM('fr/b/b7/Logo_de_la_station_CFLX-FM.png'), logoAlt: TR('s12503'), paper: true }),
+  real('shb', '100.3', 'Radio VM', 'Classique / Spirituel', '#1fa98a', { stream: 'https://s5.radio.co/sec326ff8a/listen', tunein: 's91363', logo: TR('s16572'), paper: true }),
   real('shb', '101.1', 'ICI Première', 'Nouvelles / Talk', '#f26a21', { stream: STW('CBFFM10_SRC'), site: 'https://ici.radio-canada.ca/ohdio/premiere', ...ICI_PREMIERE }),
   real('shb', '102.7', 'Rouge FM', 'Pop', '#e4002b', { stream: STW('CITE1FM'), site: 'https://www.rougefm.ca/estrie/', logo: LP('7/77/Logo-rougefm-estrie.svg') }),
   real('shb', '106.1', 'Énergie', 'Rock / Pop', '#2a35c9', { stream: STW('CIMOFM'), site: 'https://www.radioenergie.ca/estrie/', logo: LP('2/2c/Logo-nrj-sherbrooke-inverted.svg') }),
   real('shb', '107.7', '107,7 Estrie', 'Nouvelles / Talk', '#1e3a8a', { stream: STW('CKOYFM'), tunein: 's24769', logo: LP('a/a7/107.7_Estrie.svg'), paper: true }),
+  // The towns around: Granby, Coaticook, Val-des-Sources, Lac-Brome, Acton Vale.
+  real('est', '96.7', 'CIGN', 'Communautaire', '#5e35b1', { stream: 'https://arcq.streamb.live/SB00259', tunein: 's142345', logo: TI('s142345'), paper: true, town: 'Coaticook' }),
+  real('est', '99.1', 'CIDI', 'Communautaire', '#455a64', { stream: STATS(8166), tunein: 's130550', logo: TJ('s130550'), paper: true, town: 'Lac-Brome' }),
+  real('est', '99.3', 'Oui 99,3', 'Succès', '#f9c613', { stream: STATS(8018), tunein: 's105597', logo: TI('s105597'), town: 'Val-des-Sources' }),
+  real('est', '103.7', 'Radio Acton', 'Communautaire', '#b71c1c', { stream: 'https://arcq.streamb.live/SB00261', tunein: 's65692', logo: TJ('s65692'), paper: true, town: 'Acton Vale' }),
+  real('est', '104.9', 'M105', 'Succès', '#c0392b', { stream: STW('CFXMFM'), tunein: 's7699', logo: TJ('s7699'), paper: true, town: 'Granby' }),
+  // Across the border: what Burlington, Plattsburgh and the mountains send north. Checked from
+  // a server in the United States; whether each of them lets a listener in from Canada wasn't.
+  real('usa', '89.5', 'NCPR', 'Radio publique', '#37474f', { stream: 'https://ncpr-ice.streamguys1.com/ncpr-96k.mp3', tunein: 's18403', logo: TI('s18403'), paper: true, town: 'Canton, NY' }),
+  real('usa', '92.1', 'Moo 92', 'Country', '#2e7d32', { stream: 'https://stream.aiir.com/wwfmypiatmcvv', site: 'https://www.moo92.com/', town: 'Derby, VT' }),
+  real('usa', '92.1', 'WVTK', 'Rétro', '#2e7d32', { stream: 'https://live.amperwave.net/direct/vox-wvtkfmmp3-imc', tunein: 's30022', logo: TI('s30022'), paper: true, town: 'Middlebury, VT' }),
+  real('usa', '92.9', 'Star 92.9', 'Succès', '#1b6f8f', { stream: 'https://live.amperwave.net/direct/vox-wezffmmp3-imc', tunein: 's28651', logo: TI('s28651'), paper: true, town: 'Burlington, VT' }),
+  real('usa', '94.9', '94.9 HOM', 'Succès', '#3d8fd1', { stream: 'https://live.amperwave.net/direct/townsquare-whomfmmp3-ibc3.mp3', tunein: 's29388', logo: TJ('s29388'), town: 'Mount Washington, NH' }),
+  real('usa', '95.5', '95 Triple X', 'Pop', '#f57c00', { stream: 'https://live.amperwave.net/direct/vox-wxxxfmmp3-imc', tunein: 's24099', logo: TI('s24099'), town: 'Burlington, VT' }),
+  real('usa', '96.7', 'MeTV FM', 'Rétro', '#c62828', { stream: 'https://live.amperwave.net/direct/vox-wxzofmmp3-imc', tunein: 's24109', logo: TI('s24109'), paper: true, town: 'Willsboro, NY' }),
+  real('usa', '98.9', 'WOKO', 'Country', '#1565c0', { stream: STW('WOKOFM'), tunein: 's21715', logo: TR('s21715'), paper: true, town: 'Burlington, VT' }),
+  real('usa', '99.9', 'The Buzz', 'Rock alternatif', '#f9d71c', { stream: STW('WBTZFM'), tunein: 's27642', logo: TR('s27642'), town: 'Plattsburgh, NY' }),
+  // (No logo of WCVT's could be found: its name is written.)
+  real('usa', '101.7', 'WCVT', 'Rétro', '#00897b', { stream: STW('WCVTFM'), tunein: 's28103', town: 'Stowe, VT' }),
+  real('usa', '105.1', 'Kool 105', 'Rétro', '#c62828', { stream: STW('WKOLFM'), tunein: 's30327', logo: TR('s30327'), paper: true, town: 'Plattsburgh, NY' }),
+  real('usa', '106.7', 'WIZN', 'Rock classique', '#b71c1c', { stream: STW('WIZNFM'), tunein: 's29734', logo: TR('s29734'), paper: true, town: 'Burlington, VT' }),
+  real('usa', '107.9', 'Vermont Public', 'Nouvelles / Talk', '#3a9b35', { stream: 'https://vpr.streamguys1.com/vpr96.mp3', tunein: 's17055', logo: TR('s17055'), town: 'Burlington, VT' }),
+  real('usa', '620', 'WVMT', 'Talk', '#1a3a8a', { stream: 'https://live.amperwave.net/direct/vox-wvmtammp3-ibc', tunein: 's23568', logo: TI('s23568'), town: 'Burlington, VT' }),
 ]
 
 // Stations without a logo whose recording carries a picture of their own (fan stations, a few
