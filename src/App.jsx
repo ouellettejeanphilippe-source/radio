@@ -29,8 +29,8 @@ const CONTROLS_KEY = 'radio:controls'
 // What the previous and next keys do: 'station', 'song' or 'hop'.
 const KEYS_KEY = 'radio:keys'
 const HOP = 30
-// The app icon's "Mode auto" shortcut opens with ?auto (see the manifest).
-// The shortcut of the car screen there used to be: it opens the app, like any other way in.
+// The installed app once had a shortcut to a car screen, which opened with ?auto. There is no car
+// screen any more: the shortcut, where a phone still has it, opens the app like any other way in.
 const OLD_SHORTCUT = new URLSearchParams(window.location.search).has('auto')
 
 function readJson(key, fallback) {
