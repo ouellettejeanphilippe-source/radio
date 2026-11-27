@@ -62,15 +62,11 @@ label {
 }
 /* Every control answers a press. */
 .ctrl,
-.drive-close,
-.drive-btn,
 .scrobble-btn,
 .btn-link {
   transition: transform 0.09s ease-out;
 }
 .ctrl:active:not(:disabled),
-.drive-close:active,
-.drive-btn:active,
 .scrobble-btn:active:not(:disabled),
 .btn-link:active {
   transform: scale(0.96);
@@ -145,153 +141,9 @@ label {
   border: 1px solid var(--bezel-strong);
 }
 .fav.on,
-.fav.on:hover:not(:disabled),
-.drive-fav.on {
+.fav.on:hover:not(:disabled) {
   color: var(--dial);
 }
-/* Car mode */
-.drive {
-  position: fixed;
-  inset: 0;
-  z-index: 35;
-  display: grid;
-  grid-template-rows: auto 1fr auto auto;
-  justify-items: center;
-  gap: 16px;
-  padding: calc(12px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
-  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--accent) 45%, var(--asphalt)) 0, #050506 75%);
-  transition: background 0.6s;
-  touch-action: none;
-  user-select: none;
-  animation: fade-in 0.2s ease-out;
-}
-.drive-top {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.drive-top .ctrl {
-  color: var(--legend);
-}
-.drive-close {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 44px;
-  padding: 0 16px 0 10px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--bezel);
-  font-size: 14px;
-  font-weight: 600;
-}
-.drive-art {
-  align-self: center;
-  width: min(72vw, 42vh, 420px);
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  transition:
-    transform 0.25s,
-    opacity 0.25s;
-}
-.drive-art.dragging {
-  transition: none;
-}
-.drive-art .cover {
-  height: 100%;
-  border-radius: 12px;
-}
-.drive-info {
-  width: 100%;
-  text-align: center;
-  min-width: 0;
-}
-.drive-name {
-  font-family: var(--display);
-  font-size: clamp(36px, 10vw, 64px);
-  line-height: 1;
-  -webkit-text-stroke: 2px #000;
-  paint-order: stroke fill;
-  text-shadow: 3px 4px 0 #000;
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-}
-.drive-song {
-  margin-top: 10px;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--legend-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.drive-song.is-error {
-  color: var(--needle);
-}
-.drive-controls {
-  width: min(100%, 520px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.drive-btn {
-  width: 96px;
-  height: 96px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--bezel-strong);
-}
-.drive-btn:active {
-  background: rgba(255, 255, 255, 0.22);
-}
-/* The one lit key is amber, not white: no glare in the car at night. */
-.drive-btn--main {
-  width: 128px;
-  height: 128px;
-  background: var(--dial);
-  border-color: transparent;
-  color: var(--dial-ink);
-}
-.drive-btn--main:active {
-  background: #e89c1f;
-}
-/* Phone on a car mount, sideways: logo on the left, the rest on the right. */
-@media (orientation: landscape) and (max-height: 600px) {
-  .drive {
-    grid-template-columns: auto 1fr;
-    grid-template-rows: auto 1fr auto;
-    column-gap: 28px;
-    padding-left: calc(20px + env(safe-area-inset-left));
-    padding-right: calc(20px + env(safe-area-inset-right));
-  }
-  .drive-top {
-    grid-column: 1 / -1;
-  }
-  .drive-art {
-    grid-row: 2 / 4;
-    width: min(40vw, calc(100vh - 120px));
-  }
-  .drive-info {
-    align-self: end;
-  }
-  .drive-controls {
-    justify-self: center;
-  }
-  .drive-btn {
-    width: 84px;
-    height: 84px;
-  }
-  .drive-btn--main {
-    width: 108px;
-    height: 108px;
-  }
-}
-
 /* Covers: station logo on a tile in its colour, or the video thumbnail */
 .cover {
   position: relative;
@@ -799,6 +651,18 @@ input[type='range']:disabled {
   flex: none;
   color: var(--legend-3);
 }
+/* On the home screen, the top row is within a thumb's reach too: the game's name a size up, and
+   its keys with room around them. */
+.sheet > .sheet-top .sheet-game {
+  font-size: 13px;
+}
+.sheet > .sheet-top .game-name {
+  height: 48px;
+}
+.sheet > .sheet-top .sheet-top-actions .ctrl {
+  width: 48px;
+  height: 48px;
+}
 .sheet-top-actions {
   justify-self: end;
   display: flex;
@@ -943,8 +807,13 @@ input[type='range']:disabled {
   color: var(--legend-3);
 }
 
-/* What's on: the station and the song as a caption in the corner, and the play key. */
+/* What's on: the station and the song as a caption in the corner, and the play key. There is no
+   car screen: this one is read at arm's length from a mount as well as in the hand, so the
+   caption is large, and the keys are made for a thumb that isn't being looked at. Everything
+   else is a swipe (see App.jsx). */
 .now {
+  /* The size of the play key, which the rest follows. */
+  --key: clamp(68px, 19vmin, 88px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -972,12 +841,19 @@ input[type='range']:disabled {
   white-space: nowrap;
 }
 .now-name {
-  font-size: 18px;
+  font-size: clamp(21px, 6.2vmin, 30px);
   font-weight: 700;
+  line-height: 1.2;
+  /* At this size a long name takes a second line rather than losing its end. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
 }
 .now-song {
   color: var(--legend-2);
-  font-size: 14px;
+  font-size: clamp(15px, 4.4vmin, 21px);
+  line-height: 1.3;
 }
 .now-song.is-error {
   color: var(--needle);
@@ -986,12 +862,12 @@ input[type='range']:disabled {
 .bars {
   display: inline-flex;
   align-items: flex-end;
-  gap: 2px;
-  height: 12px;
-  margin-right: 8px;
+  gap: 0.14em;
+  height: 0.68em;
+  margin-right: 0.45em;
 }
 .bars i {
-  width: 3px;
+  width: 0.17em;
   height: 100%;
   border-radius: 1px;
   background: var(--dial);
@@ -1028,13 +904,23 @@ input[type='range']:disabled {
   display: none;
 }
 .now-keys .ctrl--main {
-  width: 56px;
-  height: 56px;
+  width: var(--key);
+  height: var(--key);
 }
 .now-keys .ctrl--main svg {
-  width: 26px;
-  height: 26px;
+  width: 46%;
+  height: 46%;
   color: var(--dial-ink);
+}
+/* The heart: as easy to hit as a key, without being one. */
+.now-main .fav {
+  flex: none;
+  width: max(44px, calc(var(--key) * 0.6));
+  height: max(44px, calc(var(--key) * 0.6));
+}
+.now-main .fav svg {
+  width: 58%;
+  height: 58%;
 }
 .now-side {
   grid-column: 1 / -1;
@@ -1623,13 +1509,6 @@ input[type='range']:disabled {
   }
   .scrobble-btn:hover:not(:disabled) {
     filter: brightness(1.12);
-  }
-  .drive-close:hover,
-  .drive-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  .drive-btn--main:hover {
-    background: #ffc257;
   }
   .hold-hint--touch {
     display: none;
