@@ -54,11 +54,11 @@ Dans « Réglages », on peut envoyer les chansons écoutées à ListenBrainz et
 
 ## Stations
 
-Tout est dans `src/stations.js` : jeu, nom, DJ, genre, couleur, vidéo YouTube et logo. Les vrais postes y sont aussi (`REAL`) : fréquence, nom, genre, couleur, identifiant TuneIn et site du poste. Leurs logos viennent de TuneIn, posés sur une plaque claire parce qu'ils sont dessinés pour une page blanche. Un poste sans logo affiche son nom, écrit dans la police de l'app et ajusté pour remplir le carré (`src/sign.js`), ou ses initiales là où l'image est petite, comme sur la roue : la vignette de la vidéo est presque toujours la jaquette du jeu, la même pour tous ses postes. Quand l'enregistrement a une vraie illustration du poste, on ajoute son identifiant à `OWN_ART` et c'est elle qui s'affiche, en pleine résolution.
+Tout est dans `src/stations.js` : jeu, nom, DJ, genre, couleur, vidéo YouTube et logo. Les vrais postes y sont aussi (`REAL`) : fréquence, nom, genre, couleur, identifiant TuneIn et site du poste. Chacun a son vrai logo, le plus net qui existe : en vectoriel depuis Logopedia pour les grands postes, dans la version dessinée pour fond sombre quand il y en a une; sinon celui de Wikipédia ou le carré de 600 px de TuneIn. Un logo dessiné pour une page blanche (`paper`) est posé sur une plaque claire. Radio VM et CJMQ n'ont pas de logo d'assez bonne qualité : leur nom est écrit. Un poste sans logo affiche son nom, écrit dans la police de l'app et ajusté pour remplir le carré (`src/sign.js`), ou ses initiales là où l'image est petite, comme sur la roue : la vignette de la vidéo est presque toujours la jaquette du jeu, la même pour tous ses postes. Quand l'enregistrement a une vraie illustration du poste, on ajoute son identifiant à `OWN_ART` et c'est elle qui s'affiche, en pleine résolution.
 
 ## Crédits des images
 
-Les logos et les images de fond des jeux viennent des wikis Fandom de chaque jeu; ceux des vrais postes, de TuneIn. Rien de tout ça n'est dans le dépôt : l'app les charge à l'affichage.
+Les logos et les images de fond des jeux viennent des wikis Fandom de chaque jeu; ceux des vrais postes, de Logopedia, de Wikipédia et de TuneIn. Ce sont les marques de ces postes. Rien de tout ça n'est dans le dépôt : l'app les charge à l'affichage.
 
 Les deux photos de ville viennent de Wikimedia Commons :
 

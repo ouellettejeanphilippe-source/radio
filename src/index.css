@@ -332,6 +332,9 @@ label {
 .cover--paper img {
   padding: 9%;
   filter: none;
+  /* A logo that brings a white ground of its own melts into the plate instead of sitting on it
+     as a second, whiter square. */
+  mix-blend-mode: multiply;
 }
 /* No picture: the station's name, written out as a sign in its colour and sized to fill the
    square (--fit, from sign.js). Where the cover is small, as on the wheel, its initials. */

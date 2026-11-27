@@ -424,7 +424,7 @@ const LOGOS = {
   'gta6-leonida-jazz-radio': '9/9d/LJR.png',
   'gta6-radio-la-ola': 'e/e5/LaOla.png',
   'gta6-radio-on-u': '6/65/Ab67706c0000da84b3112ea9f90c7c01f4ce00b8.png',
-  'gta6-stockyard-fm': '1/1a/Ab67706c0000da84a05493483b7f2f892ef6196e.png',
+  'gta6-stockyard-fm': '3/3a/StockyardFM-GTAVI-Logo.png',
   'gta6-symphony-fm': 'a/ad/Emoji-1566122355946950746-128.png',
   'gta6-the-chamber-106-6': '7/79/Gsu92bbxf9uh1.png',
   'gta6-the-wipe': '6/62/TheWipe.png',
@@ -609,64 +609,75 @@ export const BACKDROPS = Object.fromEntries(
 // The radio of two real cities. Nothing of theirs is played here: a station is brought up like
 // any other, and its play key opens it where it is on the air: on TuneIn when TuneIn carries it,
 // on the station's own site otherwise (the large commercial networks have left TuneIn).
-// tunein: the station's id there. listen: false when TuneIn lists it without carrying it; the id
-// is kept for the logo. logo: false when TuneIn has none, or the id of another station's.
-// Checked against TuneIn's directory in November 2026.
-const tuneinLogo = (id) => `https://cdn-profiles.tunein.com/${id}/images/logog.png`
-const real = (game, freq, name, genre, color, { tunein, listen = true, site, logo = tunein } = {}) => ({
+// tunein: the station's id there. listen: false when TuneIn lists it without carrying it.
+// logo: the station's own, as sharp as it comes. Vector files from Logopedia (a wiki of logos, on
+// the same image host as the game wikis) where it has the current one, in the version drawn for a
+// dark background when there is one; otherwise Wikipedia's, or TuneIn's 600 px square.
+// paper: for a logo drawn for a white page (dark letters, or a white ground of its own): it gets
+// its page, as a plate behind it.
+// Checked against TuneIn's directory, Logopedia and Wikipedia in November 2026.
+const LP = (path) => `https://static.wikia.nocookie.net/logopedia/images/${path}/revision/latest`
+const WM = (path) => `https://upload.wikimedia.org/wikipedia/${path}`
+const TI = (id) => `https://cdn-profiles.tunein.com/${id}/images/logog.png`
+const real = (game, freq, name, genre, color, { tunein, listen = true, site, logo = '', paper = false } = {}) => ({
   id: `${game}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
   game,
   name,
   // Where a game's station has its DJ, a real one has its place on the dial.
-  dj: `${freq.replace('.', ',')}\u00a0${freq.includes('.') ? 'FM' : 'AM'}`,
+  dj: `${freq.replace('.', ',')} ${freq.includes('.') ? 'FM' : 'AM'}`,
   genre,
   color,
   youtube: '',
-  logo: logo ? tuneinLogo(logo) : '',
-  // Its logo was drawn for a white page: it gets one.
-  paper: true,
+  logo,
+  paper,
   link: tunein && listen ? `https://tunein.com/radio/${tunein}/` : site,
   on: tunein && listen ? 'TuneIn' : 'site',
 })
+const CBC_ONE = { logo: TI('s25436'), paper: true }
+const CBC_MUSIC = { logo: LP('f/f1/CBC_Music_2018.svg'), paper: true }
+const ICI_MUSIQUE = { logo: LP('a/a8/Ici_Musique_2016.svg') }
+const ICI_PREMIERE = { logo: LP('9/99/ICI_Premiere_2016.svg') }
 const REAL = [
-  real('mtl', '88.5', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { tunein: 's25436' }),
-  real('mtl', '89.3', 'CISM', 'Universitaire', '#c9a400', { tunein: 's24807' }),
-  real('mtl', '89.9', 'KIC Country', 'Country', '#2e7d32', { tunein: 's148941' }),
-  real('mtl', '90.3', 'CKUT', 'Universitaire', '#e65100', { tunein: 's31297', logo: false }),
-  real('mtl', '91.3', 'Radio VM', 'Classique / Spirituel', '#1565c0', { tunein: 's16572', logo: false }),
-  real('mtl', '91.9', 'BPM Sports', 'Sports', '#00a651', { tunein: 's47769', logo: false }),
-  real('mtl', '92.5', 'The Beat', 'Pop', '#e91e63', { site: 'https://www.thebeat925.ca/' }),
-  real('mtl', '93.5', 'CBC Music', 'Éclectique', '#00838f', { tunein: 's16700', logo: false }),
-  real('mtl', '94.3', 'Énergie', 'Rock / Pop', '#f9a825', { site: 'https://www.radioenergie.ca/montreal/' }),
-  real('mtl', '95.1', 'ICI Première', 'Nouvelles / Talk', '#d32f2f', { site: 'https://ici.radio-canada.ca/ohdio/premiere' }),
-  real('mtl', '95.9', 'Virgin Radio', 'Pop', '#e10a0a', { tunein: 's31213', listen: false, site: 'https://www.virginradio.ca/montreal/' }),
-  real('mtl', '96.9', 'CKOI', 'Pop', '#e21b23', { tunein: 's24774', listen: false, site: 'https://www.ckoi.com/' }),
-  real('mtl', '97.7', 'CHOM', 'Rock', '#546e7a', { tunein: 's31168', listen: false, site: 'https://www.chom.com/' }),
-  real('mtl', '98.5', '98,5', 'Nouvelles / Talk', '#1e3a8a', { tunein: 's12468' }),
-  real('mtl', '99.5', '99,5', 'Talk', '#283593', { tunein: 's43899' }),
-  real('mtl', '100.1', 'CKVL', 'Communautaire', '#e65100', { tunein: 's97799' }),
-  real('mtl', '100.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { tunein: 's1917' }),
-  real('mtl', '101.5', 'CIBL', 'Communautaire', '#00897b', { tunein: 's24677', logo: false }),
-  real('mtl', '102.3', 'Radio Centre-Ville', 'Communautaire', '#8e24aa', { tunein: 's24681', logo: false }),
-  real('mtl', '103.7', 'K103', 'Country', '#b71c1c', { tunein: 's64954' }),
-  real('mtl', '105.1', 'Mike FM', 'Multilingue', '#f57c00', { tunein: 's100845', logo: false }),
-  real('mtl', '105.7', 'Rythme FM', 'Pop', '#9c27b0', { tunein: 's31119', listen: false, site: 'https://www.rythmefm.com/montreal' }),
-  real('mtl', '107.3', 'Rouge FM', 'Pop', '#d50000', { site: 'https://www.rougefm.ca/montreal/' }),
-  real('mtl', '690', 'TSN 690', 'Sports', '#f9a825', { tunein: 's12472' }),
-  real('mtl', '800', 'CJAD 800', 'Nouvelles / Talk', '#d81b60', { tunein: 's31204' }),
-  real('mtl', '1410', 'CPAM', 'Multilingue', '#1565c0', { tunein: 's7761' }),
-  real('mtl', '1690', 'CJLO', 'Universitaire', '#37474f', { tunein: 's24823' }),
-  real('shb', '88.3', 'CFAK', 'Universitaire', '#2e7d32', { site: 'https://cfak.ca/' }),
-  real('shb', '88.9', 'CJMQ', 'Communautaire', '#00838f', { tunein: 's24836', logo: false }),
-  real('shb', '89.7', 'CBC Music', 'Éclectique', '#00838f', { tunein: 's12499', logo: false }),
-  real('shb', '90.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { tunein: 's55444' }),
-  real('shb', '91.7', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { tunein: 's12501', logo: 's25436' }),
-  real('shb', '93.7', 'Rythme FM', 'Pop', '#9c27b0', { site: 'https://www.rythmefm.com/estrie' }),
-  real('shb', '95.5', 'CFLX', 'Communautaire', '#ef6c00', { tunein: 's12503', listen: false, site: 'https://cflx.qc.ca/', logo: false }),
-  real('shb', '101.1', 'ICI Première', 'Nouvelles / Talk', '#d32f2f', { site: 'https://ici.radio-canada.ca/ohdio/premiere' }),
-  real('shb', '102.7', 'Rouge FM', 'Pop', '#d50000', { site: 'https://www.rougefm.ca/estrie/' }),
-  real('shb', '106.1', 'Énergie', 'Rock / Pop', '#f9a825', { site: 'https://www.radioenergie.ca/estrie/' }),
-  real('shb', '107.7', '107,7 Estrie', 'Nouvelles / Talk', '#1e3a8a', { tunein: 's24769' }),
+  real('mtl', '88.5', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { tunein: 's25436', ...CBC_ONE }),
+  real('mtl', '89.3', 'CISM', 'Universitaire', '#c9a400', { tunein: 's24807', logo: TI('s24807'), paper: true }),
+  real('mtl', '89.9', 'KIC Country', 'Country', '#2e7d32', { tunein: 's148941', logo: TI('s148941'), paper: true }),
+  real('mtl', '90.3', 'CKUT', 'Universitaire', '#e65100', { tunein: 's31297', logo: WM('fr/thumb/3/38/CKUT-FM.PNG/960px-CKUT-FM.PNG'), paper: true }),
+  // No logo of Radio VM's sharper than 170 px could be found: its name is written.
+  real('mtl', '91.3', 'Radio VM', 'Classique / Spirituel', '#1fa98a', { tunein: 's16572' }),
+  real('mtl', '91.9', 'BPM Sports', 'Sports', '#1f4fa3', { tunein: 's47769', logo: WM('commons/0/06/BPM_SPORTS_logo.svg') }),
+  real('mtl', '92.5', 'The Beat', 'Pop', '#c2188b', { site: 'https://www.thebeat925.ca/', logo: LP('f/f2/CKBE-2011.svg') }),
+  real('mtl', '93.5', 'CBC Music', 'Éclectique', '#00838f', { tunein: 's16700', ...CBC_MUSIC }),
+  real('mtl', '94.3', 'Énergie', 'Rock / Pop', '#2a35c9', { site: 'https://www.radioenergie.ca/montreal/', logo: LP('8/8f/Logo-nrj-montreal-inverted.svg') }),
+  real('mtl', '95.1', 'ICI Première', 'Nouvelles / Talk', '#f26a21', { site: 'https://ici.radio-canada.ca/ohdio/premiere', ...ICI_PREMIERE }),
+  real('mtl', '95.9', 'Virgin Radio', 'Pop', '#e10a0a', { tunein: 's31213', listen: false, site: 'https://www.virginradio.ca/montreal/', logo: LP('f/f5/Logo-virgin-montreal-inverted.svg') }),
+  real('mtl', '96.9', 'CKOI', 'Pop', '#e21b23', { tunein: 's24774', listen: false, site: 'https://www.ckoi.com/', logo: LP('b/b4/Ckoi_96.9fm_default_color_logo.svg') }),
+  real('mtl', '97.7', 'CHOM', 'Rock', '#78909c', { tunein: 's31168', listen: false, site: 'https://www.chom.com/', logo: LP('a/a7/CHOM_977_Inverted_Logo.svg') }),
+  real('mtl', '98.5', '98,5', 'Nouvelles / Talk', '#1e3a8a', { tunein: 's12468', logo: LP('4/4e/CHMP-FM_%282021%29.svg'), paper: true }),
+  real('mtl', '99.5', '99,5', 'Talk', '#283593', { tunein: 's43899', logo: LP('3/34/CJPX_99.5_Montreal_logo_blanc.png') }),
+  real('mtl', '100.1', 'CKVL', 'Communautaire', '#e65100', { tunein: 's97799', logo: TI('s97799'), paper: true }),
+  real('mtl', '100.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { tunein: 's1917', ...ICI_MUSIQUE }),
+  real('mtl', '101.5', 'CIBL', 'Communautaire', '#e0a800', { tunein: 's24677', logo: WM('commons/thumb/d/d5/CIBL_101%2C5_logo.png/960px-CIBL_101%2C5_logo.png'), paper: true }),
+  real('mtl', '102.3', 'Radio Centre-Ville', 'Communautaire', '#8e24aa', { tunein: 's24681', logo: WM('commons/9/96/Radio_Centre-Ville_102%2C3_FM_logo.png'), paper: true }),
+  real('mtl', '103.7', 'K103', 'Country', '#b71c1c', { tunein: 's64954', logo: TI('s64954') }),
+  real('mtl', '105.1', 'Mike FM', 'Multilingue', '#1a237e', { tunein: 's100845', logo: WM('en/0/0c/CKDG-FM.png'), paper: true }),
+  real('mtl', '105.7', 'Rythme FM', 'Pop', '#e5127d', { tunein: 's31119', listen: false, site: 'https://www.rythmefm.com/montreal', logo: LP('4/4d/CFGL-Rythme_FM_105%2C7_%282021%29.svg') }),
+  real('mtl', '107.3', 'Rouge FM', 'Pop', '#e4002b', { site: 'https://www.rougefm.ca/montreal/', logo: LP('0/0c/Logo-rougefm-montreal.svg') }),
+  real('mtl', '690', 'TSN 690', 'Sports', '#e4002b', { tunein: 's12472', logo: LP('b/bc/CKGM_TSN_690.svg'), paper: true }),
+  real('mtl', '800', 'CJAD 800', 'Nouvelles / Talk', '#d81b60', { tunein: 's31204', logo: LP('c/c8/CJAD-AM800_%28Inverted%2C_2011%29.svg') }),
+  real('mtl', '1410', 'CPAM', 'Multilingue', '#1565c0', { tunein: 's7761', logo: TI('s7761') }),
+  real('mtl', '1690', 'CJLO', 'Universitaire', '#37474f', { tunein: 's24823', logo: TI('s24823'), paper: true }),
+  real('shb', '88.3', 'CFAK', 'Universitaire', '#2e7d32', { site: 'https://cfak.ca/', logo: WM('fr/7/7f/Logo-cfak-noir.jpg'), paper: true }),
+  // CJMQ has no logo to be found: its name is written.
+  real('shb', '88.9', 'CJMQ', 'Communautaire', '#00838f', { tunein: 's24836' }),
+  real('shb', '89.7', 'CBC Music', 'Éclectique', '#00838f', { tunein: 's12499', ...CBC_MUSIC }),
+  real('shb', '90.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { tunein: 's55444', ...ICI_MUSIQUE }),
+  real('shb', '91.7', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { tunein: 's12501', ...CBC_ONE }),
+  real('shb', '93.7', 'Rythme FM', 'Pop', '#e5127d', { site: 'https://www.rythmefm.com/estrie', logo: LP('c/c6/CFGE-FM_Rythme_93.7-98.1_%282021%29.svg') }),
+  real('shb', '95.5', 'CFLX', 'Communautaire', '#3aa7a3', { tunein: 's12503', listen: false, site: 'https://cflx.qc.ca/', logo: WM('fr/b/b7/Logo_de_la_station_CFLX-FM.png'), paper: true }),
+  real('shb', '101.1', 'ICI Première', 'Nouvelles / Talk', '#f26a21', { site: 'https://ici.radio-canada.ca/ohdio/premiere', ...ICI_PREMIERE }),
+  real('shb', '102.7', 'Rouge FM', 'Pop', '#e4002b', { site: 'https://www.rougefm.ca/estrie/', logo: LP('7/77/Logo-rougefm-estrie.svg') }),
+  real('shb', '106.1', 'Énergie', 'Rock / Pop', '#2a35c9', { site: 'https://www.radioenergie.ca/estrie/', logo: LP('2/2c/Logo-nrj-sherbrooke-inverted.svg') }),
+  real('shb', '107.7', '107,7 Estrie', 'Nouvelles / Talk', '#1e3a8a', { tunein: 's24769', logo: LP('a/a7/107.7_Estrie.svg'), paper: true }),
 ]
 
 // Stations without a logo whose recording carries a picture of their own (fan stations, a few

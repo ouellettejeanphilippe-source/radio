@@ -113,7 +113,8 @@ function Cover({ station, big, className = '' }) {
             const width = e.target.naturalWidth
             // A picture YouTube doesn't have comes back as a grey placeholder, 120 px wide.
             if (!isLogo && width <= 120) setIndex(index + 1)
-            else setTiny(width > 0 && width < 140)
+            // (A vector file states a size too, often a small one: it isn't pixel art.)
+            else setTiny(width > 0 && width < 140 && !/\.svg/i.test(src))
           }}
           onError={() => setIndex(index + 1)}
         />
