@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import qrcode from 'qrcode-generator'
 import {
   connectListenBrainz,
@@ -30,9 +30,59 @@ const dayLabel = (t) => new Date(t).toLocaleDateString('fr-CA', { day: 'numeric'
 
 // What the silent track behind the phone's controls is doing right now (see session.js).
 const SILENT = {
-  idle: "La piste de silence n'a pas encore démarré : lance un poste.",
+  idle: "La piste de silence n'a pas encore démarré : lance un poste de jeu.",
   playing: 'La piste de silence joue : les commandes devraient être à nous.',
-  paused: "La piste de silence est arrêtée, comme le poste.",
+  paused: 'La piste de silence est arrêtée, comme le poste.',
+  // Stopped under a station that plays: put back within the second, unless the phone won't have it.
+  lost: "La piste de silence s'est arrêtée alors que le poste joue : pour l'instant, les commandes sont à YouTube.",
+}
+
+// Which browser this is, as far as it says: who gets the phone's controls is the browser's call,
+// and they don't all make the same one.
+const BROWSERS = [
+  [/SamsungBrowser\/(\d+)/, 'Samsung Internet'],
+  [/(?:Firefox|FxiOS)\/(\d+)/, 'Firefox'],
+  [/EdgA?\/(\d+)/, 'Edge'],
+  [/OPR\/(\d+)/, 'Opera'],
+  [/DuckDuckGo\/(\d+)/, 'DuckDuckGo'],
+  [/(?:Chrome|CriOS)\/(\d+)/, 'Chrome'],
+  [/Version\/(\d+).*Safari/, 'Safari'],
+]
+function browser() {
+  const ua = navigator.userAgent
+  const [name, version] = BROWSERS.map(([re, name]) => [name, ua.match(re)?.[1]]).find(([, v]) => v) ?? ['Navigateur inconnu', '']
+  const system = /Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' : ''
+  const installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone
+  // Brave says it is Chrome, except here.
+  return [`${navigator.brave ? 'Brave' : name} ${version}`.trim(), system, installed ? 'app installée' : 'dans un onglet'].filter(Boolean).join(' · ')
+}
+
+// The line under the switch, kept up to date while the panel is open.
+function SilentTrack({ recording }) {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const silent = sessionStatus()
+  const state = silent.state === 'paused' && recording ? 'lost' : silent.state
+  return (
+    <>
+      {state === 'refused' ? (
+        <p className="error" role="alert">
+          Le navigateur a refusé la piste de silence ({silent.why})&nbsp;: les commandes du téléphone restent à YouTube.
+        </p>
+      ) : (
+        <p className="scrobble-help" role="status">
+          {SILENT[state]}
+        </p>
+      )}
+      <p className="scrobble-help silent-facts">
+        {browser()}
+        {silent.stopped > 0 && ` · piste arrêtée par le téléphone ${silent.stopped} fois, relancée ${silent.revived} fois`}
+      </p>
+    </>
+  )
 }
 
 function Sync() {
@@ -294,9 +344,8 @@ const KEY_MODES = [
   { id: 'hop', label: '30 secondes' },
 ]
 
-export default function Settings({ count, total, live, onLive, controls, onControls, keys, onKeys, updateReady, lastStatus, onClose }) {
+export default function Settings({ count, total, live, onLive, controls, onControls, recording, keys, onKeys, updateReady, lastStatus, onClose }) {
   const settings = useScrobbleSettings()
-  const silent = sessionStatus()
   return (
     <div className="wheel-backdrop" onClick={onClose}>
       <div className="scrobble-panel" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Réglages">
@@ -329,16 +378,7 @@ export default function Settings({ count, total, live, onLive, controls, onContr
             </span>
             <input type="checkbox" role="switch" className="switch" checked={controls} onChange={(e) => onControls(e.target.checked)} />
           </label>
-          {controls &&
-            (silent.state === 'refused' ? (
-              <p className="error" role="alert">
-                Le navigateur a refusé la piste de silence ({silent.why})&nbsp;: les commandes du téléphone restent à YouTube.
-              </p>
-            ) : (
-              <p className="scrobble-help" role="status">
-                {SILENT[silent.state]}
-              </p>
-            ))}
+          {controls && <SilentTrack recording={recording} />}
           <div className="choice-row">
             <b id="keys-legend">Touches précédent et suivant</b>
             <span className="scrobble-help">Celles du téléphone, de l'auto et des écouteurs.</span>
