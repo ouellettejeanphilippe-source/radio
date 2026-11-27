@@ -400,7 +400,8 @@ export default function Settings({ count, total, live, onLive, controls, onContr
         {/* The two photographs behind the real cities are under licences that ask for their authors' names. */}
         <p className="credits">
           Photos, sur Wikimedia Commons&nbsp;: Montréal par Jiaqian AirplaneFan (CC&nbsp;BY&nbsp;3.0), Sherbrooke par Cantons-de-l'Est
-          (CC&nbsp;BY-SA&nbsp;4.0). Les autres images viennent des wikis des jeux.
+          (CC&nbsp;BY-SA&nbsp;4.0), le mont Orford par Libertad-pb (CC&nbsp;BY-SA&nbsp;3.0), le lac Champlain par Marco Nürnberger
+          (CC&nbsp;BY&nbsp;2.0). Les autres images viennent des wikis des jeux.
         </p>
       </div>
     </div>

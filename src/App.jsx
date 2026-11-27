@@ -89,13 +89,13 @@ const thumbs = (st, big) => [...(big ? ['maxresdefault'] : []), 'mqdefault'].map
 // (`art`, see stations.js); failing that, its name, written out as a sign (see sign.js), or its
 // initials where the picture is small. `big` is for where it is shown large.
 function Cover({ station, big, className = '' }) {
-  const sources = [station.logo, ...(station.art ? thumbs(station, big) : [])].filter(Boolean)
+  const sources = [station.logo, station.logoAlt, ...(station.art ? thumbs(station, big) : [])].filter(Boolean)
   const [index, setIndex] = useState(0)
   // Tiny in-game textures (GTA 2's logos are 64 px wide) are shown as the pixel art they are.
   const [tiny, setTiny] = useState(false)
   useFaces()
   const src = sources[index]
-  const isLogo = src && src === station.logo
+  const isLogo = src && (src === station.logo || src === station.logoAlt)
   if (src) {
     return (
       <div
