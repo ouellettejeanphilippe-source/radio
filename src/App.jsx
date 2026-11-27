@@ -7,7 +7,7 @@ import { aimAt, wheelLayout } from './wheel.js'
 import META from './meta.json'
 import { countScrobblable, finishLastfmLogin, parseSong, scrobblingOn, useScrobbler, useScrobbleSettings } from './scrobble.js'
 import Settings from './Settings.jsx'
-import { holdSession, mediaKey, sessionByDefault, tile } from './session.js'
+import { APP_ICON, holdSession, mediaKey, sessionByDefault, tile } from './session.js'
 import { initials, sign, useFaces } from './sign.js'
 import { newerBuild, reloadFor } from './update.js'
 import ConfirmButton from './Confirm.jsx'
@@ -1439,13 +1439,14 @@ export default function App() {
       title: song || current.name,
       artist: song ? current.name : current.dj || gameLabel(current.game),
       album: gameLabel(current.game),
-      // The tile drawn for the station, once it is; a recording with a picture of its own shows that.
+      // The tile drawn for the station, once it is; a recording with a picture of its own shows
+      // that. Never nothing: the phone would put the page's small icon there, blown up.
       artwork:
         art?.id === current.id
           ? [{ src: art.url, sizes: '512x512', type: 'image/png' }]
           : current.art
-            ? [{ src: thumbs(current, true)[0], sizes: '1280x720', type: 'image/jpeg' }]
-            : [],
+            ? [{ src: thumbs(current, true)[0], sizes: '1280x720', type: 'image/jpeg' }, APP_ICON]
+            : [APP_ICON],
     })
   }, [current, song, art])
 

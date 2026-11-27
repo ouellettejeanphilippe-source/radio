@@ -63,7 +63,10 @@ const mix = (hex, share, into) => {
 // notification doesn't draw, and they come without the tile the app puts behind them. A station
 // without a logo gets its name on the tile, as in the app; one whose recording has a picture of
 // its own gets none, and shows that picture instead (see App.jsx).
-// Resolves to a blob URL, or to null.
+// Resolves to the picture as a data: address, or to null. A data: address rather than a blob's:
+// the phone reads the picture when it pleases, long after it was handed over, and from outside
+// the page; what it is given carries the picture itself, so there is nothing left to fetch, and
+// nothing that can have gone away meanwhile.
 const tiles = new Map()
 export function tile(station) {
   if (!station.logo && station.art) return Promise.resolve(null)
@@ -74,14 +77,14 @@ export function tile(station) {
       drawn.catch(() => null),
     )
     // A dozen is plenty for one outing; older ones are let go.
-    if (tiles.size > 12) {
-      const [oldest, url] = tiles.entries().next().value
-      tiles.delete(oldest)
-      url.then((u) => u && URL.revokeObjectURL(u))
-    }
+    if (tiles.size > 12) tiles.delete(tiles.keys().next().value)
   }
   return tiles.get(station.id)
 }
+
+// What stands in until a station's tile is drawn, or when it can't be: the app's own icon, at
+// full size. Left with nothing, the phone falls back on the page's small icon and blows it up.
+export const APP_ICON = { src: new URL('./icon-512.png', document.baseURI).href, sizes: '512x512', type: 'image/png' }
 
 const SIZE = 512
 // The same tile as in the app: the station's colour from above, fading into the dark.
@@ -101,7 +104,10 @@ function blank(station) {
   c.fillRect(0, 0, SIZE, SIZE)
   return { canvas, c }
 }
-const png = (canvas) => new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(URL.createObjectURL(blob)) : reject(new Error('empty tile'))), 'image/png'))
+const png = (canvas) => canvas.toDataURL('image/png')
+// How much of the tile a logo takes, each way. On a plate, it keeps the plate's margin.
+const SHARE = 0.86
+const SHARE_ON_PAPER = 0.76
 
 function withLogo(station) {
   return new Promise((resolve, reject) => {
@@ -114,11 +120,22 @@ function withLogo(station) {
       const { canvas, c } = blank(station)
       const w = img.naturalWidth || SIZE
       const h = img.naturalHeight || SIZE
-      const scale = Math.min((SIZE * 0.74) / w, (SIZE * 0.74) / h)
+      const room = SIZE * (station.paper ? SHARE_ON_PAPER : SHARE)
+      let scale = Math.min(room / w, room / h)
+      // A tiny in-game texture is pixel art, as in the app: whole pixels, not a blur. (A vector
+      // file states a size too, often a small one, and is drawn sharp at any.)
+      const pixels = Math.max(w, h) < 140 && !/\.svg/i.test(station.logo)
+      if (pixels) scale = Math.max(1, Math.floor(scale))
+      c.imageSmoothingEnabled = !pixels
+      c.imageSmoothingQuality = 'high'
       // On the plate, a logo's own white ground melts into it.
       if (station.paper) c.globalCompositeOperation = 'multiply'
-      c.drawImage(img, (SIZE - w * scale) / 2, (SIZE - h * scale) / 2, w * scale, h * scale)
-      png(canvas).then(resolve, reject)
+      c.drawImage(img, Math.round((SIZE - w * scale) / 2), Math.round((SIZE - h * scale) / 2), w * scale, h * scale)
+      try {
+        resolve(png(canvas))
+      } catch (e) {
+        reject(e)
+      }
     }
     img.src = station.logo
   })
@@ -131,7 +148,7 @@ async function withName(station) {
   const { canvas, c } = blank(station)
   const { lines, size } = sign(station.name)
   // A little smaller than in the app: phones round the tile's corners, some into a circle.
-  const px = size * SIZE * 0.84
+  const px = size * SIZE * 0.9
   c.font = signFont(px)
   c.textAlign = 'center'
   c.textBaseline = 'middle'
