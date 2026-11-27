@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { addHeard, clearHeard, liveStart, pickShowStart, pickStart, readHeard } from './heard.js'
+import { addHeard, clearHeard, clearHeardOf, following, liveSpot, liveStart, pickRecording, pickStart, readHeard } from './heard.js'
 import { MixPlayer } from './mixcloud.js'
 
 let apiPromise
@@ -38,6 +38,13 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
   const mixRef = useRef(null)
   // What a player reports, for the one made later.
   const eventsRef = useRef(null)
+  // A station made of several recordings (Big Cuppa Radio's shows): the list, as [{ id, length }];
+  // and where to begin the one being loaded when that isn't for the usual rule to say.
+  const listRef = useRef(null)
+  const startRef = useRef(null)
+  const nextRef = useRef(null)
+  // The recording that is loaded: the station's own, or the one of its several that is on.
+  const [recording, setRecording] = useState(null)
   const liveRef = useRef(live)
   useEffect(() => {
     liveRef.current = live
@@ -73,14 +80,17 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
           if (needsStartRef.current) {
             needsStartRef.current = false
             const d = e.target.getDuration()
-            if (d > 120 && liveRef.current) e.target.seekTo(liveStart(d), true)
+            const at = startRef.current
+            startRef.current = null
+            // Said beforehand (one of several recordings, joined where the clock is).
+            if (at != null) {
+              if (at >= 1) e.target.seekTo(Math.min(at, Math.max(0, d - 5)), true)
+            } else if (d > 120 && liveRef.current) e.target.seekTo(liveStart(d), true)
             else if (d > 120) {
-              // A station is tuned into somewhere not heard yet; a show is taken from the top,
-              // then where it was left (see heard.js).
               const id = videoIdRef.current
-              const { start, reset } = (onMixcloud(id) ? pickShowStart : pickStart)(readHeard()[id], d)
+              const { start, reset } = pickStart(readHeard()[id], d)
               if (reset) setHeard(clearHeard(id))
-              if (start > 0 || !onMixcloud(id)) e.target.seekTo(start, true)
+              e.target.seekTo(start, true)
             }
             lastRef.current = null
           }
@@ -99,6 +109,8 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
         } else if (e.data === S.BUFFERING) setStatus('buffering')
         else if (e.data === S.ENDED) {
           lastRef.current = null
+          // One of several: on to another. Alone: round again.
+          if (listRef.current) return nextRef.current(true)
           e.target.seekTo(0, true)
           e.target.playVideo()
         }
@@ -164,9 +176,10 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
     return () => clearInterval(t)
   }, [status])
 
-  // `length`: the recording's length in seconds where it is known beforehand (a show's is).
-  const load = useCallback(
-    (videoId, length) => {
+  // Loads one recording. `length`: its length in seconds where it is known beforehand (a show's
+  // is); `at`: where to begin it, when that is already decided.
+  const start = useCallback(
+    (videoId, length, at = null) => {
       // From one player to the other: the one being left goes quiet.
       const was = videoIdRef.current
       if (was && onMixcloud(was) !== onMixcloud(videoId)) {
@@ -175,9 +188,11 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
         else pendingRef.current = null
       }
       videoIdRef.current = videoId
+      startRef.current = at
       needsStartRef.current = true
       lastRef.current = null
       userPausedRef.current = false
+      setRecording(videoId)
       setStatus('buffering')
       setTime({ current: 0, duration: 0 })
       if (onMixcloud(videoId)) {
@@ -195,15 +210,54 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
     [mixHostRef],
   )
 
+  // One of a station's several recordings. Live, the one the clock is in, where it is in it;
+  // otherwise the one just left or one with something still to hear (see heard.js), and the usual
+  // rule says where in it. `ended`: the one that was on has just finished.
+  const startOne = useCallback(
+    (ended) => {
+      const list = listRef.current
+      if (liveRef.current) {
+        let spot = liveSpot(list)
+        // The clock still in the last seconds of the one that has just ended: on to the next.
+        if (ended && spot.id === videoIdRef.current && spot.at > spot.length / 2) spot = { ...following(list, spot.id), at: 0 }
+        return start(spot.id, spot.length, spot.at)
+      }
+      const { id, reset } = pickRecording(list, readHeard(), ended ? videoIdRef.current : null)
+      if (reset) setHeard(clearHeardOf(list))
+      start(id, list.find((r) => r.id === id).length)
+    },
+    [start],
+  )
+  useEffect(() => {
+    nextRef.current = startOne
+  }, [startOne])
+
+  // Tunes into a station: its recording, or one of its several (`list`).
+  const load = useCallback(
+    (videoId, length, list) => {
+      listRef.current = list ?? null
+      if (list) startOne(false)
+      else start(videoId, length)
+    },
+    [start, startOne],
+  )
+
   // Live: jump to where the broadcast is now.
   const goLive = useCallback(() => {
     const p = pick(mixRef, playerRef, readyRef, videoIdRef)
     if (!p || needsStartRef.current) return
+    // Several recordings: the clock may be in another one by now.
+    if (listRef.current) {
+      const spot = liveSpot(listRef.current)
+      if (spot.id !== videoIdRef.current) return start(spot.id, spot.length, spot.at)
+      lastRef.current = null
+      return p.seekTo(spot.at, true)
+    }
     const d = p.getDuration()
     if (!(d > 120)) return
     lastRef.current = null
     p.seekTo(liveStart(d), true)
-  }, [])
+  }, [start])
 
   const toggle = useCallback(() => {
     const p = pick(mixRef, playerRef, readyRef, videoIdRef)
@@ -281,5 +335,5 @@ export function useYouTubePlayer(hostRef, live, mixHostRef) {
     mixRef.current?.setVolume(v)
   }, [])
 
-  return { status, time, volume, heard, resetHeard, load, toggle, pause, seek, skipTo, hop, goLive, setVolume }
+  return { status, time, volume, heard, recording, resetHeard, load, toggle, pause, seek, skipTo, hop, goLive, setVolume }
 }
