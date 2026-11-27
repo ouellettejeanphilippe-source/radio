@@ -365,26 +365,53 @@ input[type='range']:disabled {
 }
 
 /* The dial: a tuner band. The needle is the seek thumb; the lit stretches are what you've heard. */
-/* In the full player it sits with the controls at the bottom, where the thumb is. */
+/* In the full player it sits with the controls at the bottom, where the thumb is: the band, then
+   the play key between the two that skip 30 seconds, with the times at either end. */
 .dial {
   width: 100%;
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 14px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  column-gap: 6px;
+  row-gap: 8px;
 }
-/* The keys either side of the band: 30 seconds back, 30 seconds on. One arrow, turned round. */
+.dial-band {
+  grid-column: 1 / -1;
+}
+.dial-time {
+  color: var(--legend-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.dial-time--end {
+  text-align: right;
+}
+.dial-keys {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 6vw, 30px);
+}
+/* The same key as on the home screen, a size down. */
+.dial-play {
+  width: 60px;
+  height: 60px;
+}
+.dial-play svg {
+  width: 46%;
+  height: 46%;
+  color: var(--dial-ink);
+}
+/* 30 seconds back, 30 seconds on. One arrow, turned round. */
 .hop {
   position: relative;
-  width: 40px;
-  height: 40px;
-  color: var(--legend-2);
+  width: 46px;
+  height: 46px;
+  color: var(--legend);
 }
 .hop svg {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
 }
 /* The number sits in the arrow's loop, whose middle is a little below the icon's. */
 .hop span {
@@ -392,7 +419,7 @@ input[type='range']:disabled {
   left: 50%;
   top: 54.5%;
   transform: translate(-50%, -50%);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.03em;
@@ -403,9 +430,6 @@ input[type='range']:disabled {
 }
 .hop:disabled {
   opacity: 0.35;
-}
-.dial-foot {
-  grid-column: 1 / -1;
 }
 .dial-band {
   position: relative;
@@ -460,21 +484,15 @@ input[type='range']:disabled {
 .dial-band input:disabled {
   opacity: 0.35;
 }
-.dial-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  color: var(--legend-2);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
 .dial-heard {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   color: var(--legend-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* The YouTube player: invisible (audio only) unless the full player is open.
@@ -855,8 +873,97 @@ input[type='range']:disabled {
   font-size: clamp(15px, 4.4vmin, 21px);
   line-height: 1.3;
 }
+/* With something on, the station's name is a small label (its sign hangs right above), and the
+   large type goes to the song: its title, on two lines if it must, then who plays it. */
+.now-name--label {
+  -webkit-line-clamp: 1;
+  color: var(--legend-2);
+  font-size: clamp(12px, 3.5vmin, 15px);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.now-song--piece {
+  display: grid;
+  gap: 2px;
+  overflow: visible;
+  white-space: normal;
+}
+.now-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--legend);
+  font-size: clamp(21px, 6.2vmin, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+/* (Two lines for the artist too: "X feat. Y" is common, and it is Y that would be cut.) */
+.now-by {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--legend-2);
+  font-size: clamp(15px, 4.4vmin, 21px);
+  line-height: 1.25;
+}
 .now-song.is-error {
   color: var(--needle);
+}
+/* A phone held upright is the narrowest screen and the one read most: there the caption has the
+   whole width, in a larger type, with the heart at its end; the play key sits under it, in the
+   middle, where either thumb reaches. The picture behind is darkened further at the foot (see
+   .backdrop), and the letters carry a little shadow of their own. */
+@media (orientation: portrait) and (max-width: 620px) {
+  .now {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 14px;
+  }
+  .now-main {
+    display: contents;
+  }
+  .now-text {
+    grid-column: 1;
+    grid-row: 1;
+    gap: 5px;
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.7),
+      0 0 18px rgba(0, 0, 0, 0.55);
+  }
+  .now-main .fav {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+  .now-keys {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+  }
+  .now-side {
+    grid-row: 3;
+  }
+  .now-name:not(.now-name--label),
+  .now-title {
+    font-size: clamp(25px, 7.6vmin, 34px);
+    line-height: 1.16;
+  }
+  .now-song:not(.now-song--piece),
+  .now-by {
+    color: color-mix(in srgb, var(--legend) 78%, var(--legend-2));
+    font-size: clamp(17px, 5.1vmin, 23px);
+  }
+  .now-name--label {
+    font-size: clamp(13px, 3.6vmin, 16px);
+    color: color-mix(in srgb, var(--legend) 62%, var(--legend-2));
+  }
+  /* Behind the caption, the night closes in earlier and darker. */
+  .sheet > .backdrop::after {
+    background:
+      radial-gradient(90% 56% at 50% 40%, color-mix(in srgb, var(--accent) 16%, transparent) 0, transparent 100%),
+      linear-gradient(to bottom, rgba(8, 9, 10, 0.82) 0, rgba(8, 9, 10, 0.56) 24%, rgba(8, 9, 10, 0.62) 50%, rgba(8, 9, 10, 0.9) 70%, rgba(8, 9, 10, 0.97) 100%);
+  }
 }
 /* Equalizer bars before the name: they move while the station plays. */
 .bars {
@@ -1195,9 +1302,14 @@ input[type='range']:disabled {
   position: fixed;
   inset: 0;
   z-index: 30;
+  /* The game's picture, as on the home screen (this is what shows until it has loaded, and where
+     there is none). */
+  isolation: isolate;
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 30%, var(--asphalt)) 0, var(--asphalt) 56%);
   animation: sheet-up 0.28s ease-out;
   overflow: hidden;
+  /* (Not even by a line of the list coming into view: hidden can still be scrolled by code.) */
+  overflow: clip;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -1225,6 +1337,168 @@ input[type='range']:disabled {
   height: 100%;
   aspect-ratio: auto;
   border-radius: 0;
+}
+/* A shade darker than on the home screen: there is a list to read over it. */
+.details .backdrop::after {
+  background:
+    radial-gradient(120% 40% at 50% 0, color-mix(in srgb, var(--accent) 22%, transparent) 0, transparent 100%),
+    linear-gradient(to bottom, rgba(8, 9, 10, 0.8) 0, rgba(8, 9, 10, 0.88) 34%, rgba(8, 9, 10, 0.95) 100%);
+}
+/* The video, with what is on under it, in the home screen's type. */
+.details-head {
+  flex: none;
+  display: grid;
+  gap: 12px;
+}
+.details-now {
+  display: grid;
+  gap: 2px;
+  align-content: center;
+  min-width: 0;
+}
+.details-now .now-title {
+  font-size: clamp(19px, 5.4vmin, 26px);
+}
+.details-now .now-by {
+  font-size: clamp(14px, 4vmin, 18px);
+}
+/* On a phone held upright the video is a small frame, and what is on is written beside it: the
+   room goes to the list. (.audio-host--video follows the frame.) */
+@media (max-width: 620px) and (orientation: portrait) {
+  .details-inner,
+  .audio-host {
+    --vw: min(44vw, 240px);
+  }
+  .details-head {
+    grid-template-columns: var(--vw) minmax(0, 1fr);
+    align-items: center;
+    margin-top: 8px;
+  }
+  .details-head .video-slot {
+    margin: 0;
+  }
+  .audio-host--video {
+    left: max(16px, calc(50% - 264px));
+    transform: none;
+  }
+}
+/* Where the screen is wider than it is tall (a phone on its side, a computer), one column has no
+   room for the list: the video, what is on and the dial go on the left, the list and the swipe
+   mode on the right. */
+@media (orientation: landscape) and (max-height: 559px), (min-width: 860px) {
+  .details-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    column-gap: 28px;
+  }
+  .details-inner > .sheet-top {
+    grid-column: 1 / -1;
+  }
+  .details-head {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .details-head .video-slot {
+    margin: 0;
+  }
+  .details-inner > .chips {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .details-inner > .dial {
+    grid-column: 1;
+    grid-row: 4 / 6;
+    align-self: end;
+  }
+  .details-inner > .volume,
+  .details-inner > .error {
+    grid-column: 1;
+    grid-row: 6;
+  }
+  .details-inner > .tracks,
+  .details-inner > .tracks-none {
+    grid-column: 2;
+    grid-row: 2 / 5;
+  }
+  .details-inner > .legend {
+    grid-column: 2;
+    grid-row: 5;
+  }
+  .details-inner > .modes {
+    grid-column: 2;
+    grid-row: 6;
+  }
+  .audio-host--video {
+    transform: none;
+  }
+}
+/* A phone on its side: little height, so the video is a small frame with what is on beside it. */
+@media (orientation: landscape) and (max-height: 559px) {
+  .details-inner,
+  .audio-host {
+    --vw: min(22vw, 200px);
+  }
+  .details-inner {
+    max-width: none;
+    padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  .details-inner > .sheet-top {
+    height: 44px;
+  }
+  .details-head {
+    grid-template-columns: var(--vw) minmax(0, 1fr);
+    align-items: center;
+    margin-top: 4px;
+  }
+  .details-inner > .chips {
+    margin: 10px 0 0;
+  }
+  .details-inner > .dial {
+    padding-top: 8px;
+  }
+  .details-inner > .tracks,
+  .details-inner > .tracks-none {
+    margin-top: 4px;
+  }
+  .details-inner > .legend {
+    margin-top: 8px;
+  }
+  .details-inner > .modes {
+    margin-top: 6px;
+  }
+  .details .mode-key {
+    height: 40px;
+  }
+  .dial-play {
+    width: 54px;
+    height: 54px;
+  }
+  .audio-host--video {
+    left: max(16px, env(safe-area-inset-left));
+    top: calc(env(safe-area-inset-top) + 48px);
+  }
+}
+/* A computer, or a tablet on its side: room for the video at a good size, over what is on. */
+@media (min-width: 860px) and (min-height: 560px) {
+  .details-inner,
+  .audio-host {
+    /* The left column's width, and no taller than leaves room for the dial under it. */
+    --vw: min(calc((min(100vw, 1040px) - 60px) * 0.45), calc((100vh - 430px) * 16 / 9), 480px);
+  }
+  .details-inner {
+    max-width: 1040px;
+  }
+  .details-head {
+    margin-top: 8px;
+  }
+  .details-inner > .tracks,
+  .details-inner > .tracks-none {
+    margin-top: 8px;
+  }
+  .audio-host--video {
+    left: max(16px, calc(50% - 504px));
+  }
 }
 .chips {
   display: flex;
@@ -1283,6 +1557,50 @@ input[type='range']:disabled {
 .track.now .track-time,
 .track.now .track-title {
   color: inherit;
+}
+/* In the list of songs, a line is read as on the home screen: the title, and who plays it
+   underneath. The one that is on is lit in the dial's colour, like the play key. */
+.tracks .track {
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  font-size: 16px;
+  color: var(--legend);
+}
+.tracks .track-time {
+  font-size: 13px;
+}
+.track-what {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.tracks .track-title {
+  font-weight: 600;
+}
+.track-by {
+  overflow: hidden;
+  color: var(--legend-2);
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tracks .track--talk .track-title {
+  font-size: 14px;
+  font-weight: 400;
+}
+.tracks .track.now {
+  background: color-mix(in srgb, var(--dial) 15%, transparent);
+  box-shadow: inset 3px 0 0 var(--dial);
+}
+.tracks .track.now .track-time {
+  color: var(--dial);
+  font-weight: 700;
+}
+.tracks .track.now .track-by {
+  color: var(--legend);
 }
 .tracks-none {
   flex: 1;
