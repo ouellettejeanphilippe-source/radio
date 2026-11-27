@@ -163,7 +163,10 @@ export function useYouTubePlayer(hostRef, live) {
   const toggle = useCallback(() => {
     const p = playerRef.current
     if (!readyRef.current) return
-    const playing = p.getPlayerState() === window.YT.PlayerState.PLAYING
+    // Still tuning in counts as playing, as on the key: pressed then, it stops the station.
+    const S = window.YT.PlayerState
+    const state = p.getPlayerState()
+    const playing = state === S.PLAYING || state === S.BUFFERING
     userPausedRef.current = playing
     if (playing) p.pauseVideo()
     else {

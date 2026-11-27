@@ -1458,6 +1458,17 @@ export default function App() {
     holdSession(controls && sounding && !onAir)
   }, [controls, isCurrentLoaded, sounding, onAir])
 
+  // The phone can stop that track on its own and leave YouTube's playing, which hands the
+  // controls back to YouTube. So with each second the recording moves on, the track is put back
+  // if it has stopped. (Only then: a recording the phone has stopped too is left alone, and so
+  // is whatever it stopped them for.)
+  const movedTo = useRef(0)
+  useEffect(() => {
+    const moved = yt.time.current !== movedTo.current
+    movedTo.current = yt.time.current
+    if (moved && controls && sounding && !onAir) holdSession(true)
+  }, [controls, sounding, onAir, yt.time])
+
   // Where the recording is, for the notification's progress bar.
   useEffect(() => {
     if (!navigator.mediaSession?.setPositionState) return
@@ -1738,6 +1749,7 @@ export default function App() {
           onLive={changeLive}
           controls={controls}
           onControls={setControls}
+          recording={sounding && !onAir}
           keys={keys}
           onKeys={setKeys}
           updateReady={updateReady}

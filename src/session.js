@@ -33,23 +33,52 @@ function silence() {
 }
 
 // Plays the silent track while a station plays, and stops it with the station.
+// Called again while the station goes on (see App.jsx): the phone can stop the track on its own,
+// for another app's sound, a call, a page it puts away; YouTube's player, which it lets go on,
+// then takes the controls back, video title and picture included, and nothing gave them back.
+let wanted = false
+let ours = false
+// How the track has fared since the page opened, for the settings panel.
+const tally = { stopped: 0, revived: 0 }
 export function holdSession(playing) {
-  if (!playing) return keeper?.pause()
+  const again = playing && wanted
+  wanted = playing
+  if (!playing) {
+    if (keeper && !keeper.paused) {
+      ours = true
+      keeper.pause()
+    }
+    return
+  }
   if (!keeper) {
     keeper = new Audio(silence())
     keeper.loop = true
+    // A stop the app didn't ask for is the phone's.
+    keeper.addEventListener('pause', () => {
+      if (ours) ours = false
+      else tally.stopped++
+    })
   }
+  if (!keeper.paused) return
   // Refused when nothing has been touched yet; the touch that starts a station comes first.
   keeper.play().then(
-    () => (refused = null),
-    (e) => (refused = e.name),
+    () => {
+      refused = null
+      if (again) tally.revived++
+    },
+    // (Cut short by the app's own stop: not a refusal.)
+    (e) => e.name !== 'AbortError' && (refused = e.name),
   )
 }
 
 // What the silent track is doing, for the settings panel: 'idle' (never started), 'playing',
-// 'paused', or 'refused' with the browser's reason.
+// 'paused', or 'refused' with the browser's reason; and how often the phone stopped it and the
+// app put it back.
 let refused = null
-export const sessionStatus = () => (!keeper ? { state: 'idle' } : refused ? { state: 'refused', why: refused } : { state: keeper.paused ? 'paused' : 'playing' })
+export const sessionStatus = () => ({
+  ...tally,
+  ...(!keeper ? { state: 'idle' } : refused ? { state: 'refused', why: refused } : { state: keeper.paused ? 'paused' : 'playing' }),
+})
 
 // On iPhones, two sounds at once is a different story that hasn't been tried: off there unless asked.
 export const sessionByDefault = !/iPhone|iPad|iPod/.test(navigator.userAgent)
