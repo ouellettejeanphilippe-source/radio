@@ -161,16 +161,11 @@ const PERCENT = new Intl.NumberFormat('fr-CA', { style: 'percent' })
 
 // The dial: one band shows where you are (the needle, which you can drag) and which parts of the
 // recording you've already heard (lit).
-function Dial({ rec, time, enabled, live, onSeek, onHop, onReset }) {
+function Dial({ rec, time, enabled, live, playIcon, onSeek, onHop, onToggle, onReset }) {
   const ratio = heardRatio(rec)
   const current = enabled ? time.current : 0
   return (
     <div className="dial">
-      {/* Either side of the band, a key that skips 30 seconds: past a glitch, or a song heard twice. */}
-      <button className="ctrl hop" disabled={!enabled || live} onClick={() => onHop(-HOP)} title="Reculer de 30 secondes (Maj + ←)" aria-label="Reculer de 30 secondes">
-        <Icon d={REPLAY} />
-        <span>{HOP}</span>
-      </button>
       <div className="dial-band">
         {rec?.d > 0 &&
           rec.iv.map(([a, b]) => <span key={a} style={{ left: `${(a / rec.d) * 100}%`, width: `${((b - a) / rec.d) * 100}%` }} />)}
@@ -185,25 +180,34 @@ function Dial({ rec, time, enabled, live, onSeek, onHop, onReset }) {
           aria-valuetext={fmt(current)}
         />
       </div>
-      <button className="ctrl hop hop--on" disabled={!enabled || live} onClick={() => onHop(HOP)} title="Avancer de 30 secondes (Maj + →)" aria-label="Avancer de 30 secondes">
-        <Icon d={REPLAY} />
-        <span>{HOP}</span>
-      </button>
-      <div className="dial-foot">
-        <span>{fmt(current)}</span>
-        {live ? (
-          // A broadcast can't be rewound: the needle only shows where it is.
-          <span className="dial-heard">
-            <span className="lamp">En direct</span>
-          </span>
-        ) : (
-          <span className="dial-heard">
-            {PERCENT.format(ratio)} entendu
-            {ratio > 0 && <ConfirmButton onConfirm={onReset}>Recommencer</ConfirmButton>}
-          </span>
-        )}
-        <span>{fmt(enabled ? time.duration : 0)}</span>
+      <span className="dial-time">{fmt(current)}</span>
+      {/* The play key, as on the home screen, between two keys that skip 30 seconds: past a
+          glitch, or a song heard twice. */}
+      <div className="dial-keys">
+        <button className="ctrl hop" disabled={!enabled || live} onClick={() => onHop(-HOP)} title="Reculer de 30 secondes (Maj + ←)" aria-label="Reculer de 30 secondes">
+          <Icon d={REPLAY} />
+          <span>{HOP}</span>
+        </button>
+        <button className="ctrl ctrl--main dial-play" onClick={onToggle} title="Lecture / pause (espace)" aria-label="Lecture / pause">
+          <Icon d={playIcon} />
+        </button>
+        <button className="ctrl hop hop--on" disabled={!enabled || live} onClick={() => onHop(HOP)} title="Avancer de 30 secondes (Maj + →)" aria-label="Avancer de 30 secondes">
+          <Icon d={REPLAY} />
+          <span>{HOP}</span>
+        </button>
       </div>
+      <span className="dial-time dial-time--end">{fmt(enabled ? time.duration : 0)}</span>
+      {live ? (
+        // A broadcast can't be rewound: the needle only shows where it is.
+        <span className="dial-heard">
+          <span className="lamp">En direct</span>
+        </span>
+      ) : (
+        <span className="dial-heard">
+          {PERCENT.format(ratio)} entendu
+          {ratio > 0 && <ConfirmButton onConfirm={onReset}>Recommencer</ConfirmButton>}
+        </span>
+      )}
     </div>
   )
 }
@@ -485,11 +489,22 @@ function Tracklist({ station, index, onSeek }) {
             aria-current={i === index ? 'true' : undefined}
           >
             <span className="track-time">{fmt(start)}</span>
-            <span className="track-title">{title}</span>
+            <Line title={title} videoId={station.videoId} />
           </button>
         </li>
       ))}
     </ol>
+  )
+}
+
+// A line of the list: a song as its title with who plays it underneath; anything else as it is.
+function Line({ title, videoId }) {
+  const song = parseSong(title, videoId)
+  return (
+    <span className="track-what">
+      <span className="track-title">{song ? song.track : title}</span>
+      {song && <span className="track-by">{song.artist}</span>}
+    </span>
   )
 }
 
@@ -988,6 +1003,13 @@ export default function App() {
   // is said where a song would be.
   const show = isCurrentLoaded ? current.shows?.find((sh) => sh.id === yt.recording) : undefined
   const showName = show?.label
+  // What is on, to be read at a glance: a song as its title and who plays it; what isn't a song
+  // (an ad, the DJ, the episode of a show) as the one line there is. Lists don't all put the
+  // artist first: parseSong knows which way round each is.
+  const played = song ? parseSong(song, current.videoId) : null
+  const piece = song ? (played ? { title: played.track, by: played.artist } : { title: song }) : showName ? { title: showName } : null
+  const onTitle = piece?.title
+  const onBy = piece?.by
 
   useEffect(() => {
     localStorage.setItem(CURRENT_KEY, JSON.stringify(currentId))
@@ -1407,9 +1429,11 @@ export default function App() {
   useEffect(() => {
     if (!current) return
     showOutside(`${current.name} · Radio`, {
-      title: song || showName || current.name,
-      artist: song || showName ? current.name : current.dj || gameLabel(current.game),
-      album: gameLabel(current.game),
+      // A song as its title and its artist, as any player gives them (a car's screen, a
+      // scrobbler reading the notification), with the station where the album goes.
+      title: onTitle ?? current.name,
+      artist: onBy ?? (onTitle ? current.name : current.dj || gameLabel(current.game)),
+      album: onBy ? `${current.name} · ${gameLabel(current.game)}` : gameLabel(current.game),
       // The tile drawn for the station, once it is; a recording with a picture of its own shows
       // that. Never nothing: the phone would put the page's small icon there, blown up.
       artwork:
@@ -1421,7 +1445,7 @@ export default function App() {
               ? [{ src: thumbs(current, true)[0], sizes: '1280x720', type: 'image/jpeg' }, APP_ICON]
               : [APP_ICON],
     })
-  }, [current, song, art, showName, show?.picture])
+  }, [current, onTitle, onBy, art, show?.picture])
 
   // Playing or paused, as the phone should show it; and the silent track that keeps the phone's
   // controls with the app rather than with YouTube's player (see session.js).
@@ -1582,7 +1606,9 @@ export default function App() {
         <div className="now">
           <div className="now-main">
             <button className="now-text" onClick={() => setDetails(true)} disabled={!current || Boolean(current.link)} title="Liste des chansons, cadran et vidéo">
-              <span className="now-name">
+              {/* With something on, the station steps back to a label (its sign is right above)
+                  and the song takes the large type: its title, then who plays it. */}
+              <span className={`now-name ${piece && !failed ? 'now-name--label' : ''}`}>
                 {current && <Bars />}
                 {current?.name ?? 'Choisis un poste'}
               </span>
@@ -1590,17 +1616,26 @@ export default function App() {
                 <span className="now-song is-error" role="alert">
                   {FAILED}
                 </span>
+              ) : piece ? (
+                <span className="now-song now-song--piece">
+                  <b className="now-title">{piece.title}</b>
+                  {(piece.by || song) && (
+                    <span className="now-by">
+                      {piece.by}
+                      {song && scrobbleStatus?.state === 'done' && <span className="song-scrobble song-scrobble--done"> ✓ envoyée</span>}
+                      {song && scrobbleStatus?.state === 'error' && (
+                        <span className="song-scrobble song-scrobble--error" title={scrobbleStatus.error}>
+                          {' '}
+                          ! non envoyée
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </span>
               ) : (
                 <span className="now-song">
                   {!current && 'Touche « Choisis un jeu », en haut.'}
-                  {current && (song || showName || [current.dj, current.genre].filter(Boolean).join(' · '))}
-                  {song && scrobbleStatus?.state === 'done' && <span className="song-scrobble song-scrobble--done"> ✓ envoyée</span>}
-                  {song && scrobbleStatus?.state === 'error' && (
-                    <span className="song-scrobble song-scrobble--error" title={scrobbleStatus.error}>
-                      {' '}
-                      ! non envoyée
-                    </span>
-                  )}
+                  {current && [current.dj, current.genre].filter(Boolean).join(' · ')}
                 </span>
               )}
             </button>
@@ -1647,7 +1682,9 @@ export default function App() {
 
       {/* Behind the dial: the video, the list of songs, the full dial and the swipe mode. */}
       {details && current && !current.link && (
-        <div className="details" style={{ '--accent': current.color }} inert={wheelLayer || settingsOpen} {...detailsSwipe}>
+        <div className={`details ${isCurrentLoaded && isPlaying ? 'is-playing' : ''}`} style={{ '--accent': current.color }} inert={wheelLayer || settingsOpen} {...detailsSwipe}>
+          {/* The same night as the home screen, a shade darker: there is more to read here. */}
+          <Backdrop game={BACKDROPS[current.id] ? current.id : current.game} />
           <div className="details-inner">
             <div className="sheet-top">
               <button className="ctrl" onClick={() => setDetails(false)} aria-label="Revenir au poste">
@@ -1656,15 +1693,32 @@ export default function App() {
               <span className="sheet-game">{current.name}</span>
               <span className="sheet-top-actions" />
             </div>
-            {/* The real YouTube iframe is positioned over this slot (see .audio-host--video). */}
-            {/* (For one of several recordings, the picture of the one that is on.) */}
-            <div className="video-slot">
-              {(!isCurrentLoaded || current.mixcloud) && <Cover key={show?.id ?? current.id} station={show ? { ...current, picture: show.picture } : current} big />}
+            {/* The video, and beside it (under it, on a wide screen) what is on, as on the home
+                screen. The real YouTube iframe is positioned over the slot (see
+                .audio-host--video). For one of several recordings, the picture is that of the
+                one that is on. */}
+            <div className="details-head">
+              <div className="video-slot">
+                {(!isCurrentLoaded || current.mixcloud) && <Cover key={show?.id ?? current.id} station={show ? { ...current, picture: show.picture } : current} big />}
+              </div>
+              <div className="details-now">
+                {piece ? (
+                  <>
+                    <b className="now-title">{piece.title}</b>
+                    {piece.by && <span className="now-by">{piece.by}</span>}
+                  </>
+                ) : (
+                  <>
+                    <b className="now-title">{current.dj || current.name}</b>
+                    <span className="now-by">{current.genre}</span>
+                  </>
+                )}
+              </div>
             </div>
             <div className="chips">
-              {showName && <span className="badge">{showName}</span>}
-              {current.dj && <span className="badge">{current.dj}</span>}
-              <span className="badge">{current.genre}</span>
+              {/* (Said beside the video when no song is: not twice.) */}
+              {piece && current.dj && <span className="badge">{current.dj}</span>}
+              {piece && <span className="badge">{current.genre}</span>}
               <span className="badge">{eraLabel(current.era)}</span>
               <TalkBadge talk={current.talk} />
             </div>
@@ -1680,6 +1734,8 @@ export default function App() {
               live={live}
               onSeek={yt.seek}
               onHop={nudge}
+              playIcon={playIcon}
+              onToggle={togglePlay}
               onReset={() => yt.resetHeard(show?.id ?? current.videoId)}
             />
             <div className="legend" id="modes-legend">
