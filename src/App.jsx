@@ -537,7 +537,10 @@ const RECORDINGS = STATIONS_PLAYABLE.filter((st) => st.videoId)
 // remembers of those is the one station it is now.
 const renamed = (id) => (typeof id === 'string' && id.startsWith('bigcuppa-') ? 'shows-big-cuppa-radio' : id)
 // Where a real station is on the air, as its play key says it.
-const outside = (st) => (st.on === 'TuneIn' ? 'TuneIn' : 'son site')
+const outside = (st) => (st.plain ? 'dans un onglet' : st.on === 'TuneIn' ? 'sur TuneIn' : 'sur son site')
+// Where that key leads: the station's own sound when it has some the app can't play (see `plain`
+// in stations.js), or else the page it is on the air at.
+const elsewhere = (st) => st.plain || st.link
 // What the app can play itself: a recording, or a real station's stream. The rest opens elsewhere.
 const playable = (st) => Boolean(st.videoId || st.stream)
 // The games that have something to play, in the order of the home screen.
@@ -1091,7 +1094,7 @@ export default function App() {
     if (!playable(current)) {
       // From the keyboard; the key on the screen is a link of its own.
       remember(current)
-      window.open(current.link, '_blank', 'noopener')
+      window.open(elsewhere(current), '_blank', 'noopener')
     } else if (isCurrentLoaded) toggleSound()
     else tune(current)
   }
@@ -1517,12 +1520,12 @@ export default function App() {
         // A real station without a stream plays elsewhere: its key is the way there.
         <a
           className="ctrl ctrl--main"
-          href={current.link}
+          href={elsewhere(current)}
           target="_blank"
           rel="noopener"
           onClick={() => remember(current)}
-          title={`Écouter sur ${outside(current)}`}
-          aria-label={`Écouter ${current.name} sur ${outside(current)}`}
+          title={`Écouter ${outside(current)}`}
+          aria-label={`Écouter ${current.name} ${outside(current)}`}
         >
           <Icon d={OUTSIDE} />
         </a>
@@ -1661,7 +1664,7 @@ export default function App() {
           // No recording, so no dial: where else the station is on the air, which is the way to
           // it when it has no stream, or when its stream won't come.
           <a className="sheet-dial sheet-outside legend" href={current.link} target="_blank" rel="noopener" onClick={() => remember(current)}>
-            {current.stream ? 'Aussi sur ' : 'En ondes sur '}
+            {current.stream || current.plain ? 'Aussi sur ' : 'En ondes sur '}
             {current.on === 'TuneIn' ? 'TuneIn' : 'le site du poste'}
           </a>
         ) : mixShown ? (
