@@ -639,7 +639,7 @@ const STW = (mount) => `https://playerservices.streamtheworld.com/api/livestream
 const STATS = (port) => `https://stream2.statsradio.com/${port}/stream`
 // town: said after the frequency, for a station that isn't in the city its section is named for.
 // logoAlt: a second address for the logo, tried when the first doesn't answer.
-const real = (game, freq, name, genre, color, { tunein, listen = true, site, stream = '', logo = '', logoAlt = '', paper = false, town = '' } = {}) => ({
+const real = (game, freq, name, genre, color, { tunein, listen = true, site, stream = '', plain = '', logo = '', logoAlt = '', paper = false, town = '' } = {}) => ({
   id: `${game}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
   game,
   name,
@@ -652,6 +652,9 @@ const real = (game, freq, name, genre, color, { tunein, listen = true, site, str
   logoAlt,
   paper,
   stream,
+  // A station whose only stream is plain http: a secure page, as the app is, may not sound it.
+  // A tab of its own may, and that is what its play key opens: the sound and nothing else.
+  plain,
   link: tunein && listen ? `https://tunein.com/radio/${tunein}/` : site,
   on: tunein && listen ? 'TuneIn' : 'site',
 })
@@ -661,8 +664,8 @@ const ICI_MUSIQUE = { logo: LP('a/a8/Ici_Musique_2016.svg') }
 const ICI_PREMIERE = { logo: LP('9/99/ICI_Premiere_2016.svg') }
 const REAL = [
   real('mtl', '88.5', 'CBC Radio One', 'Nouvelles / Talk', '#c8102e', { stream: STW('CBMEFM_CBC'), tunein: 's25436', ...CBC_ONE }),
-  real('mtl', '89.3', 'CISM', 'Universitaire', '#c9a400', { tunein: 's24807', logo: TI('s24807'), paper: true }),
-  real('mtl', '89.9', 'KIC Country', 'Country', '#2e7d32', { tunein: 's148941', logo: TI('s148941'), paper: true }),
+  real('mtl', '89.3', 'CISM', 'Universitaire', '#c9a400', { stream: 'https://stream.cism893.ca/', tunein: 's24807', logo: TI('s24807'), paper: true }),
+  real('mtl', '89.9', 'KIC Country', 'Country', '#2e7d32', { plain: 'http://andromeda.shoutca.st:8221/stream', tunein: 's148941', logo: TI('s148941'), paper: true }),
   real('mtl', '90.3', 'CKUT', 'Universitaire', '#e65100', { stream: 'https://ckut.out.airtime.pro/ckut_a', tunein: 's31297', logo: WM('fr/thumb/3/38/CKUT-FM.PNG/960px-CKUT-FM.PNG'), logoAlt: TR('s31297'), paper: true }),
   // (No logo of Radio VM's sharper than 170 px could be found: on its plate, it stays small.)
   real('mtl', '91.3', 'Radio VM', 'Classique / Spirituel', '#1fa98a', { stream: 'https://s5.radio.co/sec326ff8a/listen', tunein: 's16572', logo: TR('s16572'), paper: true }),
@@ -679,7 +682,8 @@ const REAL = [
   real('mtl', '100.1', 'CKVL', 'Communautaire', '#e65100', { stream: STATS(8072), tunein: 's97799', logo: TI('s97799'), paper: true }),
   real('mtl', '100.7', 'ICI Musique', 'Éclectique', '#4a5fd9', { stream: STW('CBFXFM_SRC'), tunein: 's1917', ...ICI_MUSIQUE }),
   real('mtl', '101.5', 'CIBL', 'Communautaire', '#e0a800', { stream: STATS(8106), tunein: 's24677', logo: TJ('s24677') }),
-  real('mtl', '102.3', 'Radio Centre-Ville', 'Communautaire', '#8e24aa', { tunein: 's24681', logo: TR('s24681') }),
+  // (« /; »: asked for its root by a browser, this kind of server shows a page about itself.)
+  real('mtl', '102.3', 'Radio Centre-Ville', 'Communautaire', '#8e24aa', { plain: 'http://mediacast.b2b2c.ca:8010/;', tunein: 's24681', logo: TR('s24681') }),
   real('mtl', '103.7', 'K103', 'Country', '#b71c1c', { stream: STATS(8092), tunein: 's64954', logo: TI('s64954') }),
   real('mtl', '105.1', 'Mike FM', 'Multilingue', '#1a237e', { stream: STATS(8020), tunein: 's100845', logo: TJ('s100845'), paper: true }),
   real('mtl', '105.7', 'Rythme FM', 'Pop', '#e5127d', { stream: STW('CFGLFM'), tunein: 's31119', listen: false, site: 'https://www.rythmefm.com/montreal', logo: LP('4/4d/CFGL-Rythme_FM_105%2C7_%282021%29.svg') }),
