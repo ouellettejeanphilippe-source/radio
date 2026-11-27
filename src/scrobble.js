@@ -32,7 +32,33 @@ const writeJson = (key, value) => {
 // --- Song titles -----------------------------------------------------------------------------
 
 // These recordings list "Title - Artist" instead of "Artist - Title".
-const TITLE_FIRST = new Set(['6x5lj1Ssd3Y', '8ecauPD5TTs', 'a849BeTKco4', 'tHZF__xY-Wo'])
+const TITLE_FIRST = new Set([
+  '6x5lj1Ssd3Y',
+  '8ecauPD5TTs',
+  'a849BeTKco4',
+  'tHZF__xY-Wo',
+  // GTA VI, as its uploader lists it.
+  'gYU6LoX2MAw',
+  'Z_Kcq0-wmJ4',
+  'Kvarw9q9Zh4',
+  'qtrFpZpj13g',
+  'ZSCLM_kGzkU',
+  'Hr4UgN6UbSw',
+  'Y_ELedvsw7U',
+  '-P5WQoSdhHg',
+  'W_e5eUNgIqE',
+  'vSgT06Fwrb4',
+  '13V3vbCH4cw',
+  'GqLYAUj9Gco',
+  'kyaZvQSUF4k',
+  'adG_RoLgOfo',
+  'fqMm_h9VKPc',
+  'zYTQuZuzSqY',
+  '-RwK09PE-lw',
+  'LxdLqlBJIV0',
+  'ZF_ae0Nyb5A',
+  '5EEEOXYH4f4',
+])
 // Tracklist entries that aren't songs: ads, news, DJ bits, call-ins…
 const NOT_SONG =
   /^(commercials?|ads?|advert(isement)?s?|ident|intro|outro|news|weather|dj(?=\s*$)|guest|caller|call|segment|interlude|promo|jingle|station id|skit|break|talk|interview|\w+ call|mike and david show|weazel)\b/i
