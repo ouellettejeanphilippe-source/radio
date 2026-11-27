@@ -15,6 +15,9 @@
 // A list can also be pasted by hand into scripts/tracklists/<videoId>.txt (one
 // "12:34 Artist - Title" per line, same formats as below): it wins over everything else, and
 // needs no network.
+//
+// Usage: node scripts/meta.mjs --pasted
+//   only takes in the pasted lists, without asking YouTube anything.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -124,7 +127,9 @@ const cache = existsSync(CACHE) ? JSON.parse(readFileSync(CACHE, 'utf8')) : {}
 const save = () => writeFileSync(CACHE, JSON.stringify(cache))
 const djs = Object.fromEntries(STATIONS.map((st) => [parseYouTubeId(st.youtube), st.dj]))
 const ids = Object.keys(djs).filter((id) => id !== 'null')
-if (KEY) {
+if (process.argv.includes('--pasted')) {
+  // Nothing is asked of YouTube: what the last run found stays, and the pasted lists go in.
+} else if (KEY) {
   try {
     Object.assign(cache, await fetchByApi(ids.filter((id) => !cache[id])))
     save()
@@ -180,6 +185,6 @@ for (const id of ids) {
 }
 const missing = ids.filter((id) => !cache[id]).length
 if (missing) console.log(`${missing} videos not fetched this time: their previous data is kept; run again later`)
-if (!KEY) console.log('Only descriptions were read. With YT_API_KEY set, the comments are searched for lists too (see the top of this file).')
+if (!KEY && !process.argv.includes('--pasted')) console.log('Only descriptions were read. With YT_API_KEY set, the comments are searched for lists too (see the top of this file).')
 writeFileSync(OUT, JSON.stringify(meta) + '\n')
 console.log(`${Object.keys(meta).length}/${ids.length} with data, ${Object.values(meta).filter((x) => x.tracks).length} tracklists`)
